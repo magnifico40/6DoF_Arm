@@ -15,8 +15,26 @@ quadric = gluNewQuadric()
 
 
 def init():
-    glClearColor(1, 1, 1, 0.1) #kolor tła: RGB,przezroczystość
-    glEnable(GL_DEPTH_TEST) #uruchamia głębokość - 3d
+    glClearColor(1, 1, 1, 1)  # białe tło
+    glEnable(GL_DEPTH_TEST)
+
+    # Włączenie oświetlenia
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+
+    # Właściwości światła
+    light_position = [5.0, 5.0, 10.0, 1.0]  # [x, y, z, 1.0] – światło punktowe
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position)
+
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])  # rozproszone (białe)
+    glLightfv(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])  # refleksy
+
+    # Właściwości materiału
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.8, 0.5, 0.2, 1.0])  # kolor materiału
+    glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])  # odbicia
+    glMaterialf(GL_FRONT, GL_SHININESS, 50.0)  # połysk (0–128)
+
+    glEnable(GL_NORMALIZE)
 
 
 def draw_text(x, y, text):
@@ -105,7 +123,7 @@ def display():
     # Podstawa
     glPushMatrix()
     glTranslatef(0.0, 0.5, 0.0) #srodek 1 przegubu
-    glColor3f(1.0, 0.5, 0.0)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
     glRotatef(angle1, 0, 1, 0)
     draw_segment(1.0)
 
@@ -113,14 +131,14 @@ def display():
     glTranslatef(0.0, 0.5, 0.0) #w gore o 0.5 od aktualnego polozenia
     glRotatef(angle2, 0, 0, 1)
     glTranslatef(0.0, 0.5, 0.0)
-    glColor3f(0.45, 0.65, 0.0)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
     draw_segment(1.0)
 
     # Przedramię
     glTranslatef(0.0, 0.5, 0.0)
     glRotatef(angle3, 0, 0, 1)
     glTranslatef(0.0, 0.5, 0.0)
-    glColor3f(0.6, 0.0, 0.6)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.0, 0.6, 1.0])
     draw_segment(1.0)
 
     #nadgarstek
@@ -129,7 +147,7 @@ def display():
     glRotatef(angle5, 0, 1, 0)
     glRotatef(angle6, 0, 0, 1)
     glTranslatef(0.0, 0.25, 0.0)
-    glColor3f(0.0, 0.6, 0.6)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.0, 0.6, 0.6, 1.0])
     draw_segment(0.5)
 
     glPopMatrix()
