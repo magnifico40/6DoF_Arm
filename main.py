@@ -1,3 +1,6 @@
+# Compatibility profile 
+#older, simpler approach, limited possibilities
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -12,29 +15,28 @@ angle5 = 0
 angle6 = 0
 
 def init():
-    glClearColor(0.1, 0.1, 0.1, 0.1) #kolor tła: RGB,przezroczystość
-    glEnable(GL_DEPTH_TEST) #uruchamia głębokość - 3d 
+    glClearColor(0.1, 0.1, 0.1, 0.1) #RGB, background
+    glEnable(GL_DEPTH_TEST) 
 
 def draw_segment(length):
-    glPushMatrix()  #zapisuje macierz na stosie. Robimy push, zmieniamy cos i robimy pop. 
-    glScalef(0.2, length, 0.2) #wymiary X,Y,Z prostokąta, rysujemy w "srodku"
-    glutSolidCube(1.0)          #oryginalnie sześcian, rozciągniety przez glScalef
-    glPopMatrix()   #sciąga ze stosu?
+    glPushMatrix()  #saves matrix on stack
+    glScalef(0.2, length, 0.2) #scales length in X,Y,Z draawing in middle of rectangle
+    glutSolidCube(1.0) #"original" cube
+    glPopMatrix()   #takes from stack
 
 def draw_grid():
     grid_size = 10
-    spacing = 1.0  # Odstępy między liniami siatki
+    spacing = 1.0  # grid spacing
     glPushMatrix()
-    # Rysowanie siatki w płaszczyźnie XZ
-    glColor3f(0.2, 0.2, 0.2)  # Kolor linii siatki (ciemnoszary)
+
+    glColor3f(0.2, 0.2, 0.2)  # grey color
     for i in range(-grid_size, grid_size + 1):
-        # Linie poziome (X)
-        glBegin(GL_LINES) # rysowanie odcinkow
+
+        glBegin(GL_LINES)
         glVertex3f(i * spacing, 0, -grid_size * spacing)
         glVertex3f(i * spacing, 0, grid_size * spacing)
         glEnd()
         
-        # Linie pionowe (Z)
         glBegin(GL_LINES)
         glVertex3f(-grid_size * spacing, 0, i * spacing)
         glVertex3f(grid_size * spacing, 0, i * spacing)
@@ -44,42 +46,61 @@ def draw_grid():
 
 
 def display():
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) #czyści tło
-    glLoadIdentity()    #resetuje macierz transformacji
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) #clears background
+    glLoadIdentity()    
 
-    gluLookAt(4, 4, 10, 0, 0, 0, 0, 1, 0) #4,4,10 - pozycja kamery, 0,0,0 - punkt na który kamera jest skierowana, 0,1,0 - wektor góra, 
+    gluLookAt(4, 4, 10, 0, 0, 0, 0, 1, 0) #4,4,10 - camera position , 0,0,0 - camera looking direction, 0,1,0 - "up" 
 
     draw_grid()
 
-    # Podstawa
+    # Base
     glPushMatrix()
-    glTranslatef(0.0, 0.5, 0.0) #srodek 1 przegubu
+    glTranslatef(0.0, 0.5, 0.0) #middle of 1 joint
     glColor3f(1.0, 0.0, 0.0)
-    glRotatef(angle1, 0, 1, 0)
+    glRotatef(angle1, 0, 1, 0) #angle, x, y, z
     draw_segment(1.0)
 
-    # Ramię górne
-    glTranslatef(0.0, 0.5, 0.0) #w gore o 0.5 od aktualnego polozenia
-    glRotatef(angle2, 0, 0, 1)
+    # Upper Arm
+    glTranslatef(0.0, 0.5, 0.0) # 0.5 up
+    glRotatef(angle2, 0, 0, 1)  #bending place
     glTranslatef(0.0, 0.5, 0.0)
     glColor3f(0.0, 1.0, 0.0)
     draw_segment(1.0)
 
-    # Przedramię
+    # Forearm
     glTranslatef(0.0, 0.5, 0.0)
     glRotatef(angle3, 0, 0, 1)
     glTranslatef(0.0, 0.5, 0.0)
     glColor3f(0.0, 0.0, 1.0)
     draw_segment(1.0)
 
-    #nadgarstek
+    #wrist
     glTranslatef(0.0, 0.5, 0.0)
-    glRotatef(angle4, angle5, angle6, 1)
+    glRotatef(angle6, 1, 0, 0)  
+    glRotatef(angle5, 0, 1, 0)  
+    glRotatef(angle4, 0, 0, 1)  
     glTranslatef(0.0, 0.25, 0.0)
     glColor3f(0.0, 1.0, 1.0)
     draw_segment(0.5)
 
+    # Finger 1
+    glPushMatrix()
+    glTranslatef(-0.1, 0.25, 0.0) 
+    glScalef(0.05, 0.2, 0.05)
+    glColor3f(1.0, 1.0, 0.0)
+    glutSolidCube(1.0)
     glPopMatrix()
+
+    # Finger 2
+    glPushMatrix()
+    glTranslatef(0.1, 0.25, 0.0) 
+    glScalef(0.05, 0.2, 0.05)
+    glColor3f(1.0, 1.0, 0.0)
+    glutSolidCube(1.0)
+    glPopMatrix()
+
+    glPopMatrix() 
+
     glutSwapBuffers()
 
 def reshape(width, height):
@@ -107,11 +128,11 @@ def keyboard(key, x, y):
     glutPostRedisplay()
 
 def main():
-    glutInit(sys.argv) #incicjalizuje glut
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH) # tryb renderowania GLUT_DOUBLE – podwójny bufor (w celu uzyskania płynnej animacji).GLUT_RGB – używa modelu kolorów RGB.GLUT_DEPTH – używa bufora głębokości (potrzebny do rysowania 3D).
+    glutInit(sys.argv) 
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH) 
     glutInitWindowSize(800, 600)
     glutCreateWindow(b"3D Robot Arm - OpenGL")
-    init() #init() – Inicjalizuje ustawienia OpenGL.
+    init()
     glutDisplayFunc(display)
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyboard)
