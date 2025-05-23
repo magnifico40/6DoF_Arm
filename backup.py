@@ -16,17 +16,17 @@ quadric = gluNewQuadric()
 
 
 #Denavit - Hartenberg
-a1, a2, a3, a4, a5, a6 = 0, 1, 1, 0, 0, 0
+a1, a2, a3, a4, a5, a6 = 0, 1, 1, 1, 0, 0
 d1, d2, d3, d4, d5, d6 = 1, 0, 0, 0, 0, 0
 
-theta_deg = [angle1, angle2 - 90, angle3 + 180]
+theta_deg = [angle1, angle2 - 90, angle3 + 180, angle4]
 theta_table = np.radians(theta_deg)
 
-alpha_deg = [-90, 0, 90]
+alpha_deg = [-90, 0, 90, -90]
 alpha_table = np.radians(alpha_deg)
 
-d_table = [d1, 0, 0]
-a_table = [0, a2, a3]
+d_table = [d1, 0, 0, 0]
+a_table = [0, a2, a3, a4]
 
 def dh_matrix(theta, alpha, d, a):
     #notation same as in yt vid
@@ -142,7 +142,7 @@ def draw_grid():
 
 def display():
     #table update
-    theta_deg = [angle1, angle2 - 90, angle3 + 180]
+    theta_deg = [angle1, angle2 - 90, angle3 + 180, angle4]
     theta_table = np.radians(theta_deg)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) #czyści tło
@@ -197,12 +197,16 @@ def display():
     T1 = dh_matrix(theta_table[0], alpha_table[0], d1, a1)
     T2 = dh_matrix(theta_table[1], alpha_table[1], d2, a2)
     T3 = dh_matrix(theta_table[2], alpha_table[2], d3, a3)
+    T4 = dh_matrix(theta_table[3], alpha_table[3], d4, a4)
     FirstJoint = T1 @ T2
     SecondJoint = FirstJoint @ T3
+    ThirdJoint = SecondJoint @ T4
     FirstJointXYZ = [FirstJoint[0, 3], FirstJoint[1,3], FirstJoint[2, 3] ]
     SecondJointXYZ = [SecondJoint[0, 3], SecondJoint[1,3], SecondJoint[2, 3] ]
+    ThirdJointXYZ = [ThirdJoint[0, 3], ThirdJoint[1,3], ThirdJoint[2, 3] ]
     draw_text(300, 570, f"XYZ1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(300, 545, f"XYZ2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
+    draw_text(300, 520, f"XYZ3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
 
 
 
