@@ -33,23 +33,9 @@ angle6 = 0
 step_size = 3
 quadric = gluNewQuadric()
 
-"""
-# Denavit-Hartenberg
-a1, a2, a3, a4, a5, a6 = 0, 1, 1, 1, 0, 0
-d1, d2, d3, d4, d5, d6 = 1, 0, 0, 0, 0, 0
-
-theta_deg = [angle1, angle2 - 90, angle3 + 180, angle4] #fill in also in display function
-theta_table = np.radians(theta_deg)
-
-alpha_deg = [-90, 0, 90, -90]
-alpha_table = np.radians(alpha_deg)
-
-d_table = [d1, 0, 0, 0]
-a_table = [0, a2, a3, a4]
-"""
 a_table = [0, 1, 1, 0, 0, 0, 0.5]
 d_table = [1, 0, 0, 0, 0, 0, 0]
-alpha_table = np.radians([-90, 0, 0, -90, 90, 0, -0])
+alpha_table = np.radians([-90, 0, 0, -90, 90, 0, 0])
 
 def get_theta_table():
     theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5, angle6, 0]
