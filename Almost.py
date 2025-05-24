@@ -267,8 +267,9 @@ def display():
     SeventhJointXYZ = SeventhJoint[:3, 3]
     R = SeventhJoint[:3, :3]
 
-    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) )
-    pitch = np.degrees(np.arcsin(-R[2,0])       )
+    #y,x
+    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) ) #(r32, r33)
+    pitch = np.degrees(np.atan2(-R[2,0], np.sqrt( R[2,1]**2 + R[2,2]**2 )))
     yaw   = np.degrees(np.atan2(R[1,0], R[0,0]) )
 
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
