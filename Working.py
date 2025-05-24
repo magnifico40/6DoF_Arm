@@ -1,3 +1,23 @@
+"""
+
+       Y (w górę)
+       ↑
+       |
+       |
+       O--------→ X (w prawo)
+      /
+     /
+    Z (głębia, do przodu)
+
+
+"""
+
+
+
+
+
+
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -149,6 +169,7 @@ def display():
     glLoadIdentity()    #resetuje macierz transformacji
 
     gluLookAt(4, 4, 10, 0, 0, 0, 0, 1, 0) #4,4,10 - pozycja kamery, 0,0,0 - punkt na który kamera jest skierowana, 0,1,0 - wektor góra, 
+    
 
     draw_grid()
 
@@ -204,6 +225,7 @@ def display():
     FirstJointXYZ = [FirstJoint[0, 3], FirstJoint[1,3], FirstJoint[2, 3] ]
     SecondJointXYZ = [SecondJoint[0, 3], SecondJoint[1,3], SecondJoint[2, 3] ]
     ThirdJointXYZ = [ThirdJoint[0, 3], ThirdJoint[1,3], ThirdJoint[2, 3] ]
+    draw_text(500, 575, f"T1: {T1[0,0]:.2f}, {T1[0,1]:.2f}, {T1[0,2]:.2f}")
     draw_text(300, 570, f"XYZ1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(300, 545, f"XYZ2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
     draw_text(300, 520, f"XYZ3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
