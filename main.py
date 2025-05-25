@@ -1,6 +1,3 @@
-# Compatibility profile 
-#older, simpler approach, limited possibilities
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -105,7 +102,7 @@ def draw_grid():
         glVertex3f(i * spacing, 0, -grid_size * spacing)
         glVertex3f(i * spacing, 0, grid_size * spacing)
         glEnd()
-        
+
         glBegin(GL_LINES)
         glVertex3f(-grid_size * spacing, 0, i * spacing)
         glVertex3f(grid_size * spacing, 0, i * spacing)
@@ -116,9 +113,9 @@ def draw_grid():
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) #clears background
-    glLoadIdentity()    
+    glLoadIdentity()
 
-    gluLookAt(4, 4, 10, 0, 0, 0, 0, 1, 0) #4,4,10 - camera position , 0,0,0 - camera looking direction, 0,1,0 - "up" 
+    gluLookAt(4, 4, 10, 0, 0, 0, 0, 1, 0) #4,4,10 - camera position , 0,0,0 - camera looking direction, 0,1,0 - "up"
 
     draw_grid()
 
@@ -129,21 +126,27 @@ def display():
     glRotatef(angle1, 0, 1, 0)
     draw_segment(1.0)
 
+
     # Upper Arm
+
     glTranslatef(0.0, 0.5, 0.0) # 0.5 up
     glRotatef(angle2, 0, 0, 1)  #bending place
     glTranslatef(0.0, 0.5, 0.0)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
     draw_segment(1.0)
 
+
     # Forearm
+
     glTranslatef(0.0, 0.5, 0.0)
     glRotatef(angle3, 0, 0, 1)
     glTranslatef(0.0, 0.5, 0.0)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.0, 0.6, 1.0])
     draw_segment(1.0)
 
+
     #wrist
+
     glTranslatef(0.0, 0.5, 0.0)
     glRotatef(angle4, 1, 0, 0)
     glRotatef(angle5, 0, 1, 0)
@@ -152,9 +155,10 @@ def display():
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.0, 0.6, 0.6, 1.0])
     draw_segment(0.5)
 
+
     # Finger 1
-    glPushMatrix()
-    glTranslatef(-0.1, 0.25, 0.0) 
+
+    glTranslatef(-0.1, 0.25, 0.0)
     glScalef(0.05, 0.2, 0.05)
     glColor3f(1.0, 1.0, 0.0)
     glutSolidCube(1.0)
@@ -194,8 +198,8 @@ def keyboard(key, x, y):
     glutPostRedisplay()
 
 def main():
-    glutInit(sys.argv) 
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH) 
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(800, 600)
     glutCreateWindow(b"3D Robot Arm - OpenGL")
     init()
