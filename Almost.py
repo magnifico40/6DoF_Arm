@@ -37,13 +37,14 @@ a_table = [0, 1, 1, 0, 0, 0, 0.5]
 d_table = [1, 0, 0, 0, 0, 0, 0]
 alpha_table = np.radians([-90, 0, 0, -90, 90, 0, 0])
 
+
 def get_theta_table():
-    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5, angle6, 0]
+    theta_deg = [angle1, angle2 - 90, angle3, angle4, angle5, angle6, 0]
     return np.radians(theta_deg)
 
 
 def dh_matrix(theta, alpha, d, a):
-    #notation same as in yt vid
+    # notation same as in yt vid
     ct, st = np.cos(theta), np.sin(theta)
     ca, sa = np.cos(alpha), np.sin(alpha)
 
@@ -73,6 +74,7 @@ def init():
 
     glEnable(GL_NORMALIZE)
 
+
 def draw_text(x, y, text):
     glMatrixMode(GL_PROJECTION)
     glPushMatrix()
@@ -92,6 +94,7 @@ def draw_text(x, y, text):
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
     glMatrixMode(GL_MODELVIEW)
+
 
 def draw_segment(length):
     glPushMatrix()
@@ -122,6 +125,7 @@ def draw_segment(length):
     glPopMatrix()
 
     glPopMatrix()
+
 
 def draw_grid():
     glDisable(GL_LIGHTING) #wylacza oswietlenie na czas rysowania siatki
@@ -194,6 +198,8 @@ def draw_gripper():
     glPopMatrix()
 
     glPopMatrix()
+
+
 def display():
     theta_table = get_theta_table()
 
@@ -267,10 +273,10 @@ def display():
     SeventhJointXYZ = SeventhJoint[:3, 3]
     R = SeventhJoint[:3, :3]
 
-    #y,x
-    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) ) #(r32, r33)
-    pitch = np.degrees(np.atan2(-R[2,0], np.sqrt( R[2,1]**2 + R[2,2]**2 )))
-    yaw   = np.degrees(np.atan2(R[1,0], R[0,0]) )
+    # y,x
+    roll = np.degrees(np.atan2(R[2, 1], R[2, 2]))  # (r32, r33)
+    pitch = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1]**2 + R[2, 2]**2)))
+    yaw = np.degrees(np.atan2(R[1, 0], R[0, 0]))
 
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(600, 545, f"Joint2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
@@ -280,12 +286,14 @@ def display():
 
     glutSwapBuffers()
 
+
 def reshape(width, height):
     glViewport(0, 0, width, height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(45, width / float(height), 1, 50)
     glMatrixMode(GL_MODELVIEW)
+
 
 def keyboard(key, x, y):
     global angle1, angle2, angle3, angle4, angle5, angle6
@@ -310,6 +318,7 @@ def keyboard(key, x, y):
     angle6 = angle6 % 360
     glutPostRedisplay()
 
+
 def main():
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
@@ -320,6 +329,7 @@ def main():
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyboard)
     glutMainLoop()
+
 
 if __name__ == "__main__":
     main()

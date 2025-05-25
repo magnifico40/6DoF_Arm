@@ -1,3 +1,5 @@
+
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -5,10 +7,54 @@ import numpy as np
 import sys
 
 
+class Kinematics:
+    def __init__(self):
+        self.angles = np.array([0, 0, 0, 0, 0, 0])
+        # DH
+        self.a_values = np.array([0, 1, 1, 0, 0, 0, 0.5])
+        self.d_values = np.array([1, 0, 0, 0, 0, 0, 0])
+        self.alfa_values = np.array(np.radians([-90, 0, 0, -90, 90, 0, 0]))
+        angles_offset = np.array([0, -90, 0, 0, 0, 0, 0])
+        self.theta_values = np.radians(np.append(self.angles, [0]) + angles_offset)
+        self.T = np.zeros(7)
+        self.Joints = np.zeros(7)
+        self.JointsXYZ = np.zeros(7)
+
+    def set_angles(self, angles):
+        self.angles = angles
+
+    def dh_matrix(self):
+        # notation same as in yt vid
+        self.T = np.zeros(7)
+        for i in enumerate(self.T):
+            ct, st = np.cos(self.theta_values[i]), np.sin(self.theta_values[i])
+            ca, sa = np.cos(self.alfa_values[i]), np.sin(self.alfa_values[i])
+            self.T[i] = np.array([
+                [ct,    -st * ca,   st * sa,    self.a_values[i] * ct],
+                [st,    ct * ca,    -ct * sa,   self.a_values[i] * st],
+                [0,     sa,         ca,         self.d_values[i]],
+                [0,     0,          0,          1]
+                ])
+    def calculate_xyz(self):
+        self.dh_matrix()
+        for i in enumerate(self.T):
+            if i != 0:
+                self.Joints[i] = self.Joints[i-1] @ self.T[i]
+            else:
+                self.Joints[i] = self.T[i]
+
+            self.JointsXYZ[i] = self.Joints[i][:3, 3]
+        R = self.Joints[6][:3, :3]
+        roll = np.degrees(np.atan2(R[2, 1], R[2, 2]))  # (r32, r33)
+        pitch = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)))
+        yaw = np.degrees(np.atan2(R[1, 0], R[0, 0]))
+        return self.JointsXYZ + [roll, pitch, yaw]
+
 
 
 class Robot:
     def __init__(self):
+        self.angles = np.array([0, 0, 0, 0, 0, 0])
         self.angle1 = 0
         self.angle2 = 0
         self.angle3 = 0
@@ -20,29 +66,58 @@ class Robot:
         self.quadric = gluNewQuadric()
         self.segLen = np.array([5, 5, 5, 2.5])
 
+    def get_angles(self):
+        return self.angles
+
     def reset(self):
-        self.angle1 = self.angle2 = self.angle3 = self.angle4 = self.angle5 = self.angle6 = 0
+        self.angles = np.zeros(6)
 
     def draw_segment(self, length):
         glPushMatrix()
         r = self.radius
+        slices = 20
+        stacks = 20
         glTranslatef(0, -length/2, 0)
         glRotatef(-90, 1, 0, 0)
 
         # Dolna półkula
         glPushMatrix()
-        gluSphere(self.quadric, r, 20, 20)
+        gluSphere(self.quadric, r, slices, stacks)
         glPopMatrix()
 
         # Walec
         glPushMatrix()
-        gluCylinder(self.quadric, r, r, length, 20, 1)
+        gluCylinder(self.quadric, r, r, length, slices, 1)
         glPopMatrix()
 
         # Górna półkula
         glPushMatrix()
         glTranslatef(0, 0, length)
-        gluSphere(self.quadric, r, 20, 20)
+        gluSphere(self.quadric, r, slices, stacks)
+        glPopMatrix()
+
+        glPopMatrix()
+
+    def draw_gripper(self, spacing=0.06):
+        glPushMatrix()
+
+        finger_length = 0.3
+        finger_width = 0.05
+
+        glColor3f(0.0, 0.0, 0.0)
+
+        # Lewy palec
+        glPushMatrix()
+        glTranslatef(-spacing, 0.0, 0.0)
+        glScalef(finger_width, finger_width, finger_length)
+        glutSolidCube(1.0)
+        glPopMatrix()
+
+        # Prawy palec
+        glPushMatrix()
+        glTranslatef(spacing, 0.0, 0.0)
+        glScalef(finger_width, finger_width, finger_length)
+        glutSolidCube(1.0)
         glPopMatrix()
 
         glPopMatrix()
@@ -128,6 +203,7 @@ class Robot:
 class Scene:
     def __init__(self):
         self.robot = Robot()
+        self.calc = Kinematics()
 
     def init_gl(self):
         glClearColor(0.1, 0.15, 0.3, 0.7)
@@ -143,9 +219,11 @@ class Scene:
         glMaterialf(GL_FRONT, GL_SHININESS, 50.0)
 
     def draw_grid(self):
+        glDisable(GL_LIGHTING)
         grid_size = 20
         spacing = 3
-        glColor3f(0.2, 0.2, 0.2)
+        glPushMatrix()
+        glColor3f(0.4, 0.4, 0.4)
         for i in range(-grid_size, grid_size + 1):
             glBegin(GL_LINES)
             glVertex3f(i * spacing, 0, -grid_size * spacing)
@@ -156,6 +234,31 @@ class Scene:
             glVertex3f(grid_size * spacing, 0, i * spacing)
             glEnd()
 
+        glLineWidth(3.0)
+        # Zielona oś X = 0
+        glColor3f(0.0, 1.0, 0.0)
+        glBegin(GL_LINES)
+        glVertex3f(0, -grid_size * spacing, 0)
+        glVertex3f(0, grid_size * spacing, 0)
+        glEnd()
+
+        # Niebieska oś Y = 0
+        glColor3f(0.0, 0.0, 1.0)
+        glBegin(GL_LINES)
+        glVertex3f(-grid_size * spacing, 0, 0)
+        glVertex3f(grid_size * spacing, 0, 0)
+        glEnd()
+
+        # Czerwona oś Z = 0
+        glColor3f(1.0, 0.0, 0.0)
+        glBegin(GL_LINES)
+        glVertex3f(0, 0, -grid_size * spacing)
+        glVertex3f(0, 0, grid_size * spacing)
+        glEnd()
+
+        glPopMatrix()
+        glEnable(GL_LIGHTING)
+
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
@@ -163,6 +266,9 @@ class Scene:
 
         self.draw_grid()
         self.robot.draw()
+        self.calc.set_angles(self.robot.get_angles())
+        text1 = self.robot.get_angles()
+        text2 = self.calc.calculate_xyz()
 
         # Napisy z kątami
         angles = [
@@ -188,7 +294,7 @@ class Scene:
         glPushMatrix()
         glLoadIdentity()
 
-        glDisable(GL_LIGHTING)  # Napisy nie potrzebują światła
+        glDisable(GL_LIGHTING)
         glColor3f(1.0, 1.0, 1.0)
         glRasterPos2f(x, y)
         for ch in text:
@@ -240,9 +346,7 @@ class Scene:
         glutPostRedisplay()
 
 
-
 def main():
-    global current_scene
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(800, 600)
@@ -253,7 +357,7 @@ def main():
 
     glutDisplayFunc(current_scene.display)
     glutReshapeFunc(current_scene.reshape)
-    glutKeyboardFunc(current_scene.keyboard)  # <-- ważne!
+    glutKeyboardFunc(current_scene.keyboard)
     glutMainLoop()
 
 
