@@ -33,12 +33,12 @@ angle6 = 0
 step_size = 3
 quadric = gluNewQuadric()
 
-a_table = [0, 1, 1, 0, 0, 0, 0.5]
+a_table = [0, 1, 1, 0, 0, 0.5, 0]
 d_table = [1, 0, 0, 0, 0, 0, 0]
 alpha_table = np.radians([-90, 0, 0, -90, 90, 0, 0])
 
 def get_theta_table():
-    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5, angle6, 0]
+    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5+90, angle6, 0]
     return np.radians(theta_deg)
 
 
@@ -62,7 +62,7 @@ def init():
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
 
-    light_position = [5.0, 5.0, 10.0, 1.0]  # [x, y, z, 1.0] – światło punktowe
+    light_position = [1, 1, 1, 1.0]  # [x, y, z, 1.0] – światło punktowe
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
     glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])
     glLightfv(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
@@ -100,7 +100,7 @@ def draw_segment(length):
     stacks = 20
 
     glTranslatef(0, 0, -length / 2.0)
-    glRotatef(-90, 0, 0, 1)  # walec wzdłuż osi Y
+    #glRotatef(-90, 0, 0, 1)  # walec wzdłuż osi Y
 
     # Rysujemy walec wzdłuż osi Z
     # Dolna półkula
@@ -145,15 +145,15 @@ def draw_grid():
             glEnd()
 
     glLineWidth(3.0)
-    # Zielona oś X = 0
-    glColor3f(0.0, 1.0, 0.0)
+    # Niebieska oś Y = 0
+    glColor3f(0.0, 0.0, 1.0)
     glBegin(GL_LINES)
     glVertex3f(0, -grid_size * spacing, 0)
     glVertex3f(0, grid_size * spacing, 0)
     glEnd()
 
-    # Niebieska oś Y = 0
-    glColor3f(0.0, 0.0, 1.0)
+    # Zielona oś X = 0
+    glColor3f(0.0, 1.0, 0.0)
     glBegin(GL_LINES)
     glVertex3f(-grid_size * spacing, 0, 0)
     glVertex3f(grid_size * spacing, 0, 0)
@@ -248,6 +248,9 @@ def display():
     T5 = dh_matrix(theta_table[4], alpha_table[4], d_table[4], a_table[4])
     T6 = dh_matrix(theta_table[5], alpha_table[5], d_table[5], a_table[5])
     T7 = dh_matrix(theta_table[6], alpha_table[6], d_table[6], a_table[6])
+    
+    #just check
+    Rz90 = dh_matrix(np.radians(90), 0, 0, 0)
 
     FirstJoint = T1 
     SecondJoint = FirstJoint @ T2
@@ -255,7 +258,7 @@ def display():
     FourthJoint = ThirdJoint @ T4
     FifthJoint = FourthJoint @ T5
     SixthJoint = FifthJoint @ T6
-    SeventhJoint = SixthJoint @ T7
+    SeventhJoint = SixthJoint @ T7 @ Rz90
 
     # Współrzędne przegubów
     FirstJointXYZ = FirstJoint[:3, 3]
@@ -266,7 +269,7 @@ def display():
     SixthJointXYZ = SixthJoint[:3, 3]
     SeventhJointXYZ = SeventhJoint[:3, 3]
     R = SeventhJoint[:3, :3]
-
+    
     #y,x
     roll  = np.degrees(np.atan2(R[2,1], R[2,2]) ) #(r32, r33)
     pitch = np.degrees(np.atan2(-R[2,0], np.sqrt( R[2,1]**2 + R[2,2]**2 )))
@@ -275,8 +278,11 @@ def display():
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(600, 545, f"Joint2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
     draw_text(600, 520, f"Joint3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
-    draw_text(600, 495, f"Gripper: {SeventhJointXYZ[0]:.2f}, {SeventhJointXYZ[1]:.2f}, {SeventhJointXYZ[2]:.2f}")
-    draw_text(600, 470, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
+    draw_text(600, 495, f"Joint4: {FourthJointXYZ[0]:.2f}, {FourthJointXYZ[1]:.2f}, {FourthJointXYZ[2]:.2f}")
+    draw_text(600, 470, f"Joint5: {FifthJointXYZ[0]:.2f}, {FifthJointXYZ[1]:.2f}, {FifthJointXYZ[2]:.2f}")
+    draw_text(600, 445, f"Joint6: {SixthJointXYZ[0]:.2f}, {SixthJointXYZ[1]:.2f}, {SixthJointXYZ[2]:.2f}")
+    draw_text(600, 420, f"Gripper: {SeventhJointXYZ[0]:.2f}, {SeventhJointXYZ[1]:.2f}, {SeventhJointXYZ[2]:.2f}")
+    draw_text(600, 395, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
 
     glutSwapBuffers()
 
