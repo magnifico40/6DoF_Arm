@@ -24,8 +24,8 @@ import sys
 import numpy as np
 
 # Kąty przegubów
-angle1 = 0
-angle2 = 0
+angle1 = 90
+angle2 = 90
 angle3 = 0
 angle4 = 0
 angle5 = 0
@@ -211,20 +211,20 @@ def display():
     draw_segment(1.0)
     # Ramię górne
     glTranslatef(0.0, 0.0, 0.5)
-    glRotatef(angle2, 0, 1, 0)
+    glRotatef(angle2, 1, 0, 0)
     glTranslatef(0.0, 0.0, 0.5)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
     draw_segment(1.0)
     # Przedramię
     glTranslatef(0.0, 0.0, 0.5)
-    glRotatef(angle3, 0, 1, 0)
+    glRotatef(angle3, 1, 0, 0)
     glTranslatef(0.0, 0.0, 0.5)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.0, 0.6, 1.0])
     draw_segment(1.0)
     #nadgarstek
     glTranslatef(0.0, 0.0, 0.5)
-    glRotatef(angle4, 0, 1, 0)
-    glRotatef(angle5, 1, 0, 0)
+    glRotatef(angle4, 1, 0, 0)
+    glRotatef(angle5, 0, 1, 0)
     glRotatef(angle6, 0, 0, 1)
     glTranslatef(0.0, 0.0, 0.25)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.0, 0.6, 0.6, 1.0])
