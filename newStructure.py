@@ -33,12 +33,12 @@ angle6 = 0
 step_size = 3
 quadric = gluNewQuadric()
 
-a_table = [0, 1, 1, 0, 0, 0, 0]
-d_table = [1, 0, 0, 0, 0, 0.5, 0]
-alpha_table = np.radians([-90, 0, 0, -90, 90, 0, 0])
+a_table = [0, 1, 0, 0, 0, 0]
+d_table = [1, 0, 0, 0.5, 0, 0.25]
+alpha_table = np.radians([-90, 0, -90, 90, -90, 0])
 
 def get_theta_table():
-    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5+90, angle6 - 90, 0]
+    theta_deg = [angle1+90, angle2 + 90, angle3, angle4, angle5, angle6]
     return np.radians(theta_deg)
 
 
@@ -124,16 +124,19 @@ def draw_segment(length):
     glPopMatrix()
 
 def draw_grid():
-    glDisable(GL_LIGHTING) #wylacza oswietlenie na czas rysowania siatki
+    glDisable(GL_LIGHTING)
     grid_size = 25
-    spacing = 0.5
+    spacing = 0.4
+    arrow_size = 0.3
+    arrow_pos = 5 * spacing  # <--- pozycja grotów osi bliżej środka
+
     glPushMatrix()
 
     # Szara siatka
     glColor3f(0.8, 0.8, 0.8)
     glLineWidth(1.0)
     for i in range(-grid_size, grid_size + 1):
-        if i!=0:
+        if i != 0:
             glBegin(GL_LINES)
             glVertex3f(i * spacing, -grid_size * spacing, 0)
             glVertex3f(i * spacing, grid_size * spacing, 0)
@@ -144,22 +147,37 @@ def draw_grid():
             glVertex3f(grid_size * spacing, i * spacing, 0)
             glEnd()
 
-    # Niebieska oś Y = 0
     glLineWidth(3.0)
+
+    # Oś Y (niebieska)
     glColor3f(0.0, 0.0, 1.0)
     glBegin(GL_LINES)
     glVertex3f(0, -grid_size * spacing, 0)
     glVertex3f(0, grid_size * spacing, 0)
     glEnd()
+    # Strzałka Y
+    glBegin(GL_LINES)
+    glVertex3f(0, arrow_pos, 0)
+    glVertex3f(arrow_size, arrow_pos - arrow_size, 0)
+    glVertex3f(0, arrow_pos, 0)
+    glVertex3f(-arrow_size, arrow_pos - arrow_size, 0)
+    glEnd()
 
-    # Zielona oś X = 0
+    # Oś X (zielona)
     glColor3f(0.0, 1.0, 0.0)
     glBegin(GL_LINES)
     glVertex3f(-grid_size * spacing, 0, 0)
     glVertex3f(grid_size * spacing, 0, 0)
     glEnd()
+    # Strzałka X
+    glBegin(GL_LINES)
+    glVertex3f(arrow_pos, 0, 0)
+    glVertex3f(arrow_pos - arrow_size, arrow_size, 0)
+    glVertex3f(arrow_pos, 0, 0)
+    glVertex3f(arrow_pos - arrow_size, -arrow_size, 0)
+    glEnd()
 
-    # Czerwona oś Z = 0
+    # Oś Z (czerwona)
     glColor3f(1.0, 0.0, 0.0)
     glBegin(GL_LINES)
     glVertex3f(0, 0, -grid_size * spacing)
@@ -167,8 +185,7 @@ def draw_grid():
     glEnd()
 
     glPopMatrix()
-    glEnable(GL_LIGHTING) #przywraca oswietlenie na czas rysowania siatki
-
+    glEnable(GL_LIGHTING)
 
 def draw_gripper():
     glPushMatrix()
@@ -209,28 +226,31 @@ def display():
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
     glRotatef(angle1, 0, 0, 1)
     draw_segment(1.0)
-    # Ramię górne
     glTranslatef(0.0, 0.0, 0.5)
+
+    # Ramię górne
     glRotatef(angle2, 1, 0, 0)
     glTranslatef(0.0, 0.0, 0.5)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
     draw_segment(1.0)
-    # Przedramię
     glTranslatef(0.0, 0.0, 0.5)
-    glRotatef(angle3, 0, 1, 0)
-    glTranslatef(0.0, 0.0, 0.5)
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.0, 0.6, 1.0])
-    draw_segment(1.0)
-    #nadgarstek
-    glTranslatef(0.0, 0.0, 0.5)
-    glRotatef(angle4, 0, 1, 0)
+    
+   #nadgarstek
+    glRotatef(angle3, 1, 0, 0)
+    glRotatef(90, 1, 0, 0)
+    glRotatef(angle4, 0, 0, 1) #roll
+    glTranslatef(0.0, 0.0, 0.25)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
+    draw_segment(0.5)
+    glTranslatef(0.0, 0.0, 0.25)
+
     glRotatef(angle5, 1, 0, 0)
     glRotatef(angle6, 0, 0, 1)
-    glTranslatef(0.0, 0.0, 0.25)
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.0, 0.6, 0.6, 1.0])
-    draw_segment(0.5)
-    #chwytak
-    glTranslatef(0.0, 0.0, 0.25)
+    glTranslatef(0.0, 0.0, 0.125)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
+    draw_segment(0.25)  
+    glTranslatef(0.0, 0.0, 0.125)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0]) 
     draw_gripper()
     glPopMatrix()
 
@@ -247,7 +267,6 @@ def display():
     T4 = dh_matrix(theta_table[3], alpha_table[3], d_table[3], a_table[3])
     T5 = dh_matrix(theta_table[4], alpha_table[4], d_table[4], a_table[4])
     T6 = dh_matrix(theta_table[5], alpha_table[5], d_table[5], a_table[5])
-    T7 = dh_matrix(theta_table[6], alpha_table[6], d_table[6], a_table[6])
 
     FirstJoint = T1 
     SecondJoint = FirstJoint @ T2
@@ -255,7 +274,6 @@ def display():
     FourthJoint = ThirdJoint @ T4
     FifthJoint = FourthJoint @ T5
     SixthJoint = FifthJoint @ T6
-    SeventhJoint = SixthJoint @ T7
 
     # Współrzędne przegubów
     FirstJointXYZ = FirstJoint[:3, 3]
@@ -264,20 +282,17 @@ def display():
     FourthJointXYZ = FourthJoint[:3, 3]
     FifthJointXYZ = FifthJoint[:3, 3]
     SixthJointXYZ = SixthJoint[:3, 3]
-    SeventhJointXYZ = SeventhJoint[:3, 3]
-    R = SeventhJoint[:3, :3]
+    R = SixthJoint[:3, :3]
 
     #y,x
-    # Obliczanie kątów Euler'a dla kolejności Y-X-Z
-    sy = np.sqrt(R[0,0]**2 + R[1,0]**2)
-    pitch = np.degrees(np.atan2(-R[2,0], sy))
-    roll  = np.degrees(np.atan2(R[2,1], R[2,2]))
-    yaw   = np.degrees(np.atan2(R[1,0], R[0,0]))
-    
+    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) ) + 135  #(r32, r33) 
+    pitch = np.degrees(np.atan2(-R[2,0], np.sqrt( R[2,1]**2 + R[2,2]**2 )))
+    yaw   = np.degrees(np.atan2(R[1,0], R[0,0]) ) -135
+
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(600, 545, f"Joint2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
     draw_text(600, 520, f"Joint3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
-    draw_text(600, 495, f"Gripper: {SeventhJointXYZ[0]:.2f}, {SeventhJointXYZ[1]:.2f}, {SeventhJointXYZ[2]:.2f}")
+    draw_text(600, 495, f"Gripper: {SixthJointXYZ[0]:.2f}, {SixthJointXYZ[1]:.2f}, {SixthJointXYZ[2] + 2.0:.2f} ")
     draw_text(600, 470, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
 
     glutSwapBuffers()
