@@ -10,6 +10,8 @@
         X (do przodu, w stronę obserwatora)
 
 
+        
+        TO do: make it same as in yt
 
 """
 
@@ -24,8 +26,8 @@ import sys
 import numpy as np
 
 # Kąty przegubów
-angle1 = 0
-angle2 = 0
+angle1 = 90
+angle2 = 90
 angle3 = 0
 angle4 = 0
 angle5 = 0
@@ -33,12 +35,14 @@ angle6 = 0
 step_size = 3
 quadric = gluNewQuadric()
 
-a_table = [0, 1, 1, 0, 0, 0.5, 0]
-d_table = [1, 0, 0, 0, 0, 0, 0]
+a_table = [0, 1, 1, 0, 0, 0, 0]
+d_table = [1, 0, 0, 0, 0, 0.5, 0]
 alpha_table = np.radians([-90, 0, 0, -90, 90, 0, 0])
+#alpha_table = np.radians([-90, 0, 90, -90, 90, 0, 0])
 
 def get_theta_table():
-    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5+90, angle6, 0]
+    theta_deg = [angle1, angle2 - 90, angle3 , angle4, angle5, angle6, 0]
+    #theta_deg = [angle1, angle2, angle3 , angle4, angle5, angle6, 0]
     return np.radians(theta_deg)
 
 
@@ -249,8 +253,6 @@ def display():
     T6 = dh_matrix(theta_table[5], alpha_table[5], d_table[5], a_table[5])
     T7 = dh_matrix(theta_table[6], alpha_table[6], d_table[6], a_table[6])
     
-    #just check
-    Rz90 = dh_matrix(np.radians(90), 0, 0, 0)
 
     FirstJoint = T1 
     SecondJoint = FirstJoint @ T2
@@ -258,7 +260,7 @@ def display():
     FourthJoint = ThirdJoint @ T4
     FifthJoint = FourthJoint @ T5
     SixthJoint = FifthJoint @ T6
-    SeventhJoint = SixthJoint @ T7 @ Rz90
+    SeventhJoint = SixthJoint @ T7 
 
     # Współrzędne przegubów
     FirstJointXYZ = FirstJoint[:3, 3]
