@@ -22,6 +22,8 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import sys
 import numpy as np
+from ikpy.chain import Chain
+from ikpy.link import OriginLink, URDFLink
 
 # Kąty przegubów
 angle1 = 180
@@ -36,6 +38,47 @@ quadric = gluNewQuadric()
 a_table = [0, 1, 0, 0, 0, 0]
 d_table = [1, 0, 0, 0.5, 0, 0.5]
 alpha_table = np.radians([-90, 0, -90, 90, -90, 0])
+
+puma_chain = Chain(name='puma560', links=[
+    OriginLink(),
+
+    URDFLink(
+        name="base",
+        origin_translation=[0, 0, 0],
+        origin_orientation=[0, 0, 0],
+        rotation=[0, 0, 1]
+    ),
+    URDFLink(
+        name="shoulder",
+        origin_translation=[0, 0, 1],  
+        origin_orientation=[0, 0, 0],
+        rotation=[1, 0, 0]
+    ),
+    URDFLink(
+        name="elbow",
+        origin_translation=[0, 0, 1], 
+        origin_orientation=[0, 0, 0],
+        rotation=[1, 0, 0]
+    ),
+    URDFLink(
+        name="wrist1",
+        origin_translation=[0, 0, 0], 
+        origin_orientation=[0, 0, 0],
+        rotation=[0, 1, 0]
+    ),
+    URDFLink(
+        name="wrist2",
+        origin_translation=[0, -0.5, 0],
+        origin_orientation=[0, 0, 0],
+        rotation=[1, 0, 0]
+    ),
+    URDFLink(
+        name="wrist3",
+        origin_translation=[0, -0.5, 0],  # końcówka
+        origin_orientation=[0, 0, 0],
+        rotation=[0, 1, 0]
+    )
+])
 
 
 def get_theta_table():
@@ -292,10 +335,16 @@ def display():
 
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(600, 545, f"Joint2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
-    draw_text(600, 520, f"Joint3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
+    draw_text(600, 520, f"Joint3: {FourthJointXYZ[0]:.2f}, {FourthJointXYZ[1]:.2f}, {FourthJointXYZ[2]:.2f}")
     draw_text(600, 495, f"Gripper: {SixthJointXYZ[0]:.2f}, {SixthJointXYZ[1]:.2f}, {SixthJointXYZ[2]:.2f} ")
     draw_text(600, 470, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
 
+    #results from ikpy
+    fk_result = puma_chain.forward_kinematics(np.radians([0, angle1, angle2, angle3, angle4, angle5, angle6]))
+    position = fk_result[:3, 3]  # Wektor [x, y, z]
+    x, y, z = position
+
+    draw_text(600, 445, f"IkPy X/Y/Z: {x:.2f}/{y:.2f}/{z:.2f}")
     glutSwapBuffers()
 
 def reshape(width, height):
