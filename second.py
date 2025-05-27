@@ -311,7 +311,7 @@ class RobotArm:
                 [0, 0, 0, 1]
             ])
 
-            self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
+            #self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
 
     def joints_xyz(self):
         for i in range(6):
