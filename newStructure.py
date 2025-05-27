@@ -74,6 +74,7 @@ def init():
 
     glEnable(GL_NORMALIZE)
 
+
 def draw_text(x, y, text):
     glMatrixMode(GL_PROJECTION)
     glPushMatrix()
@@ -93,6 +94,7 @@ def draw_text(x, y, text):
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
     glMatrixMode(GL_MODELVIEW)
+
 
 def draw_segment(length):
     glPushMatrix()
@@ -123,6 +125,7 @@ def draw_segment(length):
     glPopMatrix()
 
     glPopMatrix()
+
 
 def draw_grid():
     glDisable(GL_LIGHTING)
@@ -188,6 +191,7 @@ def draw_grid():
     glPopMatrix()
     glEnable(GL_LIGHTING)
 
+
 def draw_gripper():
     glPushMatrix()
 
@@ -212,6 +216,8 @@ def draw_gripper():
     glPopMatrix()
 
     glPopMatrix()
+
+
 def display():
     theta_table = get_theta_table()
 
@@ -298,12 +304,14 @@ def display():
 
     glutSwapBuffers()
 
+
 def reshape(width, height):
     glViewport(0, 0, width, height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(45, width / float(height), 1, 50)
     glMatrixMode(GL_MODELVIEW)
+
 
 def keyboard(key, x, y):
     global angle1, angle2, angle3, angle4, angle5, angle6
@@ -328,6 +336,7 @@ def keyboard(key, x, y):
     angle6 = angle6 % 360
     glutPostRedisplay()
 
+
 def main():
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
@@ -338,6 +347,7 @@ def main():
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyboard)
     glutMainLoop()
+
 
 if __name__ == "__main__":
     main()
