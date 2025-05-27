@@ -158,6 +158,7 @@ class RobotArmApp:
 
     def display(self):
         angles = self.robot.get_angles()
+        segmentLen = self.robot.get_segments_len()
         # theta_table = get_theta_table()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -168,34 +169,34 @@ class RobotArmApp:
         self.draw_grid()
         # Podstawa
         glPushMatrix()
-        glTranslatef(0.0, 0.0, 0.5)
+        glTranslatef(0.0, 0.0, segmentLen[0]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
         glRotatef(angles[0], 0, 0, 1)
-        self.draw_segment(1.0)
-        glTranslatef(0.0, 0.0, 0.5)
+        self.draw_segment(segmentLen[0])
+        glTranslatef(0.0, 0.0, segmentLen[0]/2)
 
         # Ramię górne
         glRotatef(angles[1], 1, 0, 0)
-        glTranslatef(0.0, 0.0, 0.5)
+        glTranslatef(0.0, 0.0, segmentLen[1]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
-        self.draw_segment(1.0)
-        glTranslatef(0.0, 0.0, 0.5)
+        self.draw_segment(segmentLen[1])
+        glTranslatef(0.0, 0.0, segmentLen[1]/2)
 
         # nadgarstek
         glRotatef(angles[2], 1, 0, 0)
         glRotatef(90, 1, 0, 0)
         glRotatef(angles[3], 0, 0, 1)  # roll
-        glTranslatef(0.0, 0.0, 0.25)
+        glTranslatef(0.0, 0.0, segmentLen[2]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
-        self.draw_segment(0.5)
-        glTranslatef(0.0, 0.0, 0.25)
+        self.draw_segment(segmentLen[2])
+        glTranslatef(0.0, 0.0, segmentLen[2]/2)
 
         glRotatef(angles[4], 1, 0, 0)
         glRotatef(angles[5], 0, 0, 1)
-        glTranslatef(0.0, 0.0, 0.125)
+        glTranslatef(0.0, 0.0, segmentLen[3]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
-        self.draw_segment(0.25)
-        glTranslatef(0.0, 0.0, 0.125)
+        self.draw_segment(segmentLen[3])
+        glTranslatef(0.0, 0.0, segmentLen[3]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
         self.draw_gripper()
         glPopMatrix()
@@ -276,8 +277,9 @@ class RobotArmApp:
 class RobotArm:
     def __init__(self):
         self.angles = np.zeros(6)
-        self.a_val = np.array([0, 1, 0, 0, 0, 0])
-        self.d_val = np.array([1, 0, 0, 0.5, 0, 0.25])
+        self.segmentLen = np.array([1, 1, 0.5, 0.25])
+        self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
+        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
         theta_increments = np.radians([90, 90, 0, 0, 0, 0])
         self.theta_val = np.radians(self.angles) + theta_increments
@@ -288,6 +290,9 @@ class RobotArm:
 
     def get_angles(self):
         return self.angles
+
+    def get_segments_len(self):
+        return self.segmentLen
 
     def get_dh_arrays(self):
         self.dh_matrix()
