@@ -279,7 +279,7 @@ class RobotArm:
         self.a_val = np.array([0, 1, 0, 0, 0, 0])
         self.d_val = np.array([1, 0, 0, 0.5, 0, 0.25])
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
-        theta_increments = np.radians([90, 90, 0, 0, 0, 0])
+        theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
         self.theta_val = np.radians(self.angles) + theta_increments
         self.T = np.empty(6, dtype=object)
         self.J = np.empty(6, dtype=object)
@@ -326,9 +326,9 @@ class RobotArm:
         R = self.J[5][:3, :3]
 
         # y,x
-        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2])) + 135  # (r32, r33)
+        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2]))   # (r32, r33)
         self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)))
-        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) - 135
+        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) 
 
     def reset_angles(self):
         self.angles = np.zeros(6)

@@ -38,7 +38,7 @@ d_table = [1, 0, 0, 0.5, 0, 0.25]
 alpha_table = np.radians([-90, 0, -90, 90, -90, 0])
 
 def get_theta_table():
-    theta_deg = [angle1+90, angle2 + 90, angle3, angle4, angle5, angle6]
+    theta_deg = [angle1-90, angle2 - 90, angle3, angle4, angle5, angle6]
     return np.radians(theta_deg)
 
 
@@ -285,14 +285,14 @@ def display():
     R = SixthJoint[:3, :3]
 
     #y,x
-    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) ) + 135  #(r32, r33) 
+    roll  = np.degrees(np.atan2(R[2,1], R[2,2]) )  #(r32, r33) 
     pitch = np.degrees(np.atan2(-R[2,0], np.sqrt( R[2,1]**2 + R[2,2]**2 )))
-    yaw   = np.degrees(np.atan2(R[1,0], R[0,0]) ) -135
+    yaw   = np.degrees(np.atan2(R[1,0], R[0,0]) ) 
 
     draw_text(600, 570, f"Joint1: {FirstJointXYZ[0]:.2f}, {FirstJointXYZ[1]:.2f}, {FirstJointXYZ[2]:.2f}")
     draw_text(600, 545, f"Joint2: {SecondJointXYZ[0]:.2f}, {SecondJointXYZ[1]:.2f}, {SecondJointXYZ[2]:.2f}")
     draw_text(600, 520, f"Joint3: {ThirdJointXYZ[0]:.2f}, {ThirdJointXYZ[1]:.2f}, {ThirdJointXYZ[2]:.2f}")
-    draw_text(600, 495, f"Gripper: {SixthJointXYZ[0]:.2f}, {SixthJointXYZ[1]:.2f}, {SixthJointXYZ[2] + 2.0:.2f} ")
+    draw_text(600, 495, f"Gripper: {SixthJointXYZ[0]:.2f}, {SixthJointXYZ[1]:.2f}, {SixthJointXYZ[2]:.2f} ")
     draw_text(600, 470, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
 
     glutSwapBuffers()
