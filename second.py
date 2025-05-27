@@ -4,6 +4,7 @@ from OpenGL.GLUT import *
 import sys
 import numpy as np
 
+
 class RobotArmApp:
     def __init__(self):
         self.step_size = 2
@@ -287,6 +288,9 @@ class RobotArm:
         self.J = np.empty(6, dtype=object)
         self.Jxyz = np.empty(6, dtype=object)
         self.ypr = np.empty(3, dtype=object)
+
+    def set_angle(self, index, value):
+        self.angles[index] = value
 
     def get_angles(self):
         return self.angles

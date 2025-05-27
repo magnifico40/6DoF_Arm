@@ -9,27 +9,10 @@ from PyQt5.QtCore import Qt
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from OpenGL.GLUT import *
+from second import RobotArm
 
-# -------------------------------------------------------------
-# Klasa logiki ramienia robota (Twoja z RobotArm)
-# -------------------------------------------------------------
-class RobotArm:
-    def __init__(self):
-        self.angles = np.zeros(6)
-        self.segmentLen = np.array([1, 1, 0.5, 0.25])
 
-    def set_angle(self, index, value):
-        self.angles[index] = value
-
-    def get_angles(self):
-        return self.angles
-
-    def get_segments_len(self):
-        return self.segmentLen
-
-# -------------------------------------------------------------
-# OpenGL Widget do rysowania ramienia robota
-# -------------------------------------------------------------
 class RobotOpenGLWidget(QOpenGLWidget):
     def __init__(self, robot, parent=None):
         super().__init__(parent)
@@ -64,7 +47,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glLoadIdentity()
 
         gluLookAt(5, 0, 8, 0, 0, 0, 0, 0, 1)
-
+        self.draw_grid()
 
         # Podstawa
         glPushMatrix()
@@ -97,6 +80,8 @@ class RobotOpenGLWidget(QOpenGLWidget):
         self.draw_segment(segmentLen[3])
         glTranslatef(0.0, 0.0, segmentLen[3] / 2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
+
+        self.draw_gripper()
         glPopMatrix()
 
     def draw_segment(self, length):
@@ -129,10 +114,104 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         glPopMatrix()
 
+    def draw_grid(self):
+        glDisable(GL_LIGHTING)
+        grid_size = 25
+        spacing = 0.4
+        arrow_size = 0.3
+        arrow_pos = 5 * spacing  # <--- pozycja grotów osi bliżej środka
 
-# -------------------------------------------------------------
-# Główne okno z GUI i OpenGLWidgetem
-# -------------------------------------------------------------
+        glPushMatrix()
+
+        # Szara siatka
+        glColor3f(0.8, 0.8, 0.8)
+        glLineWidth(1.0)
+        for i in range(-grid_size, grid_size + 1):
+            if i != 0:
+                glBegin(GL_LINES)
+                glVertex3f(i * spacing, -grid_size * spacing, 0)
+                glVertex3f(i * spacing, grid_size * spacing, 0)
+                glEnd()
+
+                glBegin(GL_LINES)
+                glVertex3f(-grid_size * spacing, i * spacing, 0)
+                glVertex3f(grid_size * spacing, i * spacing, 0)
+                glEnd()
+
+        glLineWidth(3.0)
+
+        # Oś Y (niebieska)
+        glColor3f(0.0, 0.0, 1.0)
+        glBegin(GL_LINES)
+        glVertex3f(0, -grid_size * spacing, 0)
+        glVertex3f(0, grid_size * spacing, 0)
+        glEnd()
+        # Strzałka Y
+        glBegin(GL_LINES)
+        glVertex3f(0, arrow_pos, 0)
+        glVertex3f(arrow_size, arrow_pos - arrow_size, 0)
+        glVertex3f(0, arrow_pos, 0)
+        glVertex3f(-arrow_size, arrow_pos - arrow_size, 0)
+        glEnd()
+
+        # Oś X (zielona)
+        glColor3f(0.0, 1.0, 0.0)
+        glBegin(GL_LINES)
+        glVertex3f(-grid_size * spacing, 0, 0)
+        glVertex3f(grid_size * spacing, 0, 0)
+        glEnd()
+        # Strzałka X
+        glBegin(GL_LINES)
+        glVertex3f(arrow_pos, 0, 0)
+        glVertex3f(arrow_pos - arrow_size, arrow_size, 0)
+        glVertex3f(arrow_pos, 0, 0)
+        glVertex3f(arrow_pos - arrow_size, -arrow_size, 0)
+        glEnd()
+
+        # Oś Z (czerwona)
+        glColor3f(1.0, 0.0, 0.0)
+        glBegin(GL_LINES)
+        glVertex3f(0, 0, -grid_size * spacing)
+        glVertex3f(0, 0, grid_size * spacing)
+        glEnd()
+
+        glPopMatrix()
+        glEnable(GL_LIGHTING)
+
+    def draw_gripper(self):
+        glPushMatrix()
+
+        finger_length = 0.3
+        finger_width = 0.3
+        spacing = 0.06  # odstęp od środka
+
+        glColor3f(0.0, 0.0, 0.0)
+
+        # Lewy palec
+        glPushMatrix()
+        glTranslatef(-spacing, -spacing/2, 0.0)
+        glScalef(finger_width, finger_width, finger_length)
+        self.draw_segment(1)
+        glPopMatrix()
+
+        # Prawy palec
+        glPushMatrix()
+        glTranslatef(spacing, -spacing/2, 0.0)
+        glScalef(finger_width, finger_width, finger_length)
+        self.draw_segment(1)
+        glPopMatrix()
+
+        # Górny palec (nad środkiem)
+        glPushMatrix()
+        glTranslatef(0.0, spacing, 0.0)
+        glRotatef(90, 0.0, 0.0, 1.0)  # obrót o 90° żeby palec był pionowy
+        glScalef(finger_width, finger_width, finger_length)
+        self.draw_segment(1)
+        glPopMatrix()
+
+        glPopMatrix()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
