@@ -305,6 +305,7 @@ class RobotArm:
 
     def dh_matrix(self):
         # notation same as in yt vid
+        self.theta_val = np.radians(self.angles) + np.radians([90, 90, 0, 0, 0, 0])
         for i in range(6):
             ct, st = np.cos(self.theta_val[i]), np.sin(self.theta_val[i])
             ca, sa = np.cos(self.alpha_val[i]), np.sin(self.alpha_val[i])
