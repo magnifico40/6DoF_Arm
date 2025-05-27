@@ -207,62 +207,13 @@ class RobotArmApp:
         self.draw_text(10, 470, f"angle5 (wrist y): {angles[4]}")
         self.draw_text(10, 445, f"angle6 (wrist z): {angles[5]}")
 
-        T = np.array(self.robot.get_dh_arrays())
-        '''
-        T1 = dh_matrix(theta_table[0], alpha_table[0], d_table[0], a_table[0])
-        T2 = dh_matrix(theta_table[1], alpha_table[1], d_table[1], a_table[1])
-        T3 = dh_matrix(theta_table[2], alpha_table[2], d_table[2], a_table[2])
-        T4 = dh_matrix(theta_table[3], alpha_table[3], d_table[3], a_table[3])
-        T5 = dh_matrix(theta_table[4], alpha_table[4], d_table[4], a_table[4])
-        T6 = dh_matrix(theta_table[5], alpha_table[5], d_table[5], a_table[5])
-        '''
+        xyz, ypr = self.robot.get_joints_xyz_ypr()
 
-        J = np.array(np.zeros(6), dtype=object)
-        J[0] = T[0]
-        J[1] = J[0] @ T[1]
-        J[2] = J[1] @ T[2]
-        J[3] = J[2] @ T[3]
-        J[4] = J[3] @ T[4]
-        J[5] = J[4] @ T[5]
-        '''
-        FirstJoint = T1
-        SecondJoint = FirstJoint @ T2
-        ThirdJoint = SecondJoint @ T3
-        FourthJoint = ThirdJoint @ T4
-        FifthJoint = FourthJoint @ T5
-        SixthJoint = FifthJoint @ T6
-        '''
-
-        Jxyz = np.array(np.zeros(6), dtype=object)
-        Jxyz[0] = J[0][:3, 3]
-        Jxyz[1] = J[1][:3, 3]
-        Jxyz[2] = J[2][:3, 3]
-        Jxyz[3] = J[3][:3, 3]
-        Jxyz[4] = J[4][:3, 3]
-        Jxyz[5] = J[5][:3, 3]
-        R = J[5][:3, :3]
-
-        # y,x
-        roll = np.degrees(np.atan2(R[2, 1], R[2, 2])) + 135  # (r32, r33)
-        pitch = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)))
-        yaw = np.degrees(np.atan2(R[1, 0], R[0, 0])) - 135
-
-        '''
-        # Współrzędne przegubów
-        FirstJointXYZ = FirstJoint[:3, 3]
-        SecondJointXYZ = SecondJoint[:3, 3]
-        ThirdJointXYZ = ThirdJoint[:3, 3]
-        FourthJointXYZ = FourthJoint[:3, 3]
-        FifthJointXYZ = FifthJoint[:3, 3]
-        SixthJointXYZ = SixthJoint[:3, 3]
-        R = SixthJoint[:3, :3]
-        '''
-
-        self.draw_text(600, 570, f"Joint1: {Jxyz[0][0]:.2f}, {Jxyz[0][1]:.2f}, {Jxyz[0][2]:.2f}")
-        self.draw_text(600, 545, f"Joint2: {Jxyz[1][0]:.2f}, {Jxyz[1][1]:.2f}, {Jxyz[1][2]:.2f}")
-        self.draw_text(600, 520, f"Joint3: {Jxyz[2][0]:.2f}, {Jxyz[2][1]:.2f}, {Jxyz[2][2]:.2f}")
-        self.draw_text(600, 495, f"Gripper: {Jxyz[5][0]:.2f}, {Jxyz[5][1]:.2f}, {Jxyz[5][2] + 2.0:.2f} ")
-        self.draw_text(600, 470, f"Y/P/R: {yaw:.2f}, {pitch:.2f}, {roll:.2f}")
+        self.draw_text(600, 570, f"Joint1: {xyz[0][0]:.2f}, {xyz[0][1]:.2f}, {xyz[0][2]:.2f}")
+        self.draw_text(600, 545, f"Joint2: {xyz[1][0]:.2f}, {xyz[1][1]:.2f}, {xyz[1][2]:.2f}")
+        self.draw_text(600, 520, f"Joint3: {xyz[2][0]:.2f}, {xyz[2][1]:.2f}, {xyz[2][2]:.2f}")
+        self.draw_text(600, 495, f"Gripper: {xyz[5][0]:.2f}, {xyz[5][1]:.2f}, {xyz[5][2] + 2.0:.2f} ")
+        self.draw_text(600, 470, f"Y/P/R: {ypr[0]:.2f}, {ypr[1]:.2f}, {ypr[2]:.2f}")
 
         glutSwapBuffers()
 
@@ -330,14 +281,22 @@ class RobotArm:
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
         theta_increments = np.radians([90, 90, 0, 0, 0, 0])
         self.theta_val = np.radians(self.angles) + theta_increments
-        self.DH = [0, 0, 0, 0, 0, 0]
+        self.T = np.empty(6, dtype=object)
+        self.J = np.empty(6, dtype=object)
+        self.Jxyz = [0, 0, 0, 0, 0, 0]
+        self.ypr = [0, 0, 0]
 
     def get_angles(self):
         return self.angles
 
     def get_dh_arrays(self):
         self.dh_matrix()
-        return self.DH
+        return self.T
+
+    def get_joints_xyz_ypr(self):
+        self.dh_matrix()
+        self.joints_xyz()
+        return self.Jxyz, self.ypr
 
     def dh_matrix(self):
         # notation same as in yt vid
@@ -345,22 +304,33 @@ class RobotArm:
             ct, st = np.cos(self.theta_val[i]), np.sin(self.theta_val[i])
             ca, sa = np.cos(self.alpha_val[i]), np.sin(self.alpha_val[i])
 
-            self.DH[i] = [
+            self.T[i] = np.array([
                 [ct, -st * ca, st * sa, self.a_val[i] * ct],
                 [st, ct * ca, -ct * sa, self.a_val[i] * st],
                 [0, sa, ca, self.d_val[i]],
                 [0, 0, 0, 1]
-            ]
+            ])
+            self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
+
+    def joints_xyz(self):
+        for i in range(6):
+            if i != 0:
+                self.J[i] = self.J[i-1] @ self.T[i]
+
+            else:
+                self.J[i] = self.T[i]
+
+            self.Jxyz[i] = self.J[i][:3, 3]
+
+        R = self.J[5][:3, :3]
+
+        # y,x
+        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2])) + 135  # (r32, r33)
+        self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)))
+        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) - 135
 
     def reset_angles(self):
         self.angles = np.zeros(6)
-
-
-'''
-    def get_theta_table(self):
-        theta_deg = [angle1 + 90, angle2 + 90, angle3, angle4, angle5, angle6]
-        return np.radians(theta_deg)
-'''
 
 
 def main():
