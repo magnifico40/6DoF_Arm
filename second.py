@@ -137,7 +137,7 @@ class RobotArmApp:
         elif key == b'h':
             self.robot.angles[5] -= self.step_size
         elif key == b'x':
-            self.robot.reset_angles()
+            self.robot.reset_state()
 
         '''
         angle1 = angle1 % 360
@@ -213,7 +213,7 @@ class RobotArmApp:
         self.draw_text(600, 570, f"Joint1: {xyz[0][0]:.2f}, {xyz[0][1]:.2f}, {xyz[0][2]:.2f}")
         self.draw_text(600, 545, f"Joint2: {xyz[1][0]:.2f}, {xyz[1][1]:.2f}, {xyz[1][2]:.2f}")
         self.draw_text(600, 520, f"Joint3: {xyz[2][0]:.2f}, {xyz[2][1]:.2f}, {xyz[2][2]:.2f}")
-        self.draw_text(600, 495, f"Gripper: {xyz[5][0]:.2f}, {xyz[5][1]:.2f}, {xyz[5][2] + 2.0:.2f} ")
+        self.draw_text(600, 495, f"Gripper: {xyz[5][0]:.2f}, {xyz[5][1]:.2f}, {xyz[5][2]:.2f} ")
         self.draw_text(600, 470, f"Y/P/R: {ypr[0]:.2f}, {ypr[1]:.2f}, {ypr[2]:.2f}")
 
         glutSwapBuffers()
@@ -281,22 +281,18 @@ class RobotArm:
         self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
         self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
-        theta_increments = np.radians([90, 90, 0, 0, 0, 0])
-        self.theta_val = np.radians(self.angles) + theta_increments
+        self.theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
+        self.theta_val = np.radians(self.angles) + self.theta_increments
         self.T = np.empty(6, dtype=object)
         self.J = np.empty(6, dtype=object)
-        self.Jxyz = [0, 0, 0, 0, 0, 0]
-        self.ypr = [0, 0, 0]
+        self.Jxyz = np.empty(6, dtype=object)
+        self.ypr = np.empty(3, dtype=object)
 
     def get_angles(self):
         return self.angles
 
     def get_segments_len(self):
         return self.segmentLen
-
-    def get_dh_arrays(self):
-        self.dh_matrix()
-        return self.T
 
     def get_joints_xyz_ypr(self):
         self.dh_matrix()
@@ -305,7 +301,7 @@ class RobotArm:
 
     def dh_matrix(self):
         # notation same as in yt vid
-        self.theta_val = np.radians(self.angles) + np.radians([90, 90, 0, 0, 0, 0])
+        self.theta_val = np.radians(self.angles) + self.theta_increments
         for i in range(6):
             ct, st = np.cos(self.theta_val[i]), np.sin(self.theta_val[i])
             ca, sa = np.cos(self.alpha_val[i]), np.sin(self.alpha_val[i])
@@ -317,27 +313,35 @@ class RobotArm:
                 [0, 0, 0, 1]
             ])
 
-            #self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
+            self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
 
     def joints_xyz(self):
         for i in range(6):
             if i != 0:
                 self.J[i] = self.J[i-1] @ self.T[i]
-
             else:
                 self.J[i] = self.T[i]
-
             self.Jxyz[i] = self.J[i][:3, 3]
 
         R = self.J[5][:3, :3]
 
         # y,x
-        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2])) + 135  # (r32, r33)
-        self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)))
-        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) - 135
+        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2]))   # (r32, r33)
+        self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[1, 0] ** 2 + R[0, 0] ** 2)))
+        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) 
 
     def reset_angles(self):
         self.angles = np.zeros(6)
+        self.segmentLen = np.array([1, 1, 0.5, 0.25])
+        self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
+        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
+        self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
+        theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
+        self.theta_val = np.radians(self.angles) + theta_increments
+        self.T = np.empty(6, dtype=object)
+        self.J = np.empty(6, dtype=object)
+        self.Jxyz = [0, 0, 0, 0, 0, 0]
+        self.ypr = [0, 0, 0]
 
 
 def main():
