@@ -24,6 +24,9 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
 
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
         glLightfv(GL_LIGHT0, GL_POSITION, [5.0, 5.0, 10.0, 1.0])
         glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])
         glEnable(GL_NORMALIZE)
@@ -45,7 +48,25 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-        gluLookAt(5, 0, 8, 0, 0, 0, 0, 0, 1)
+        gluLookAt(5, 1, 8, 0, 0, 0, 0, 0, 1)
+
+        glColor4f(0.9, 0.9, 0.9, 1.0)  # R, G, B, A
+
+        # Wyłącz oświetlenie, jeśli używasz go w scenie
+        glDisable(GL_LIGHTING)
+
+        # Rysuj dużą płaszczyznę XY
+        glBegin(GL_QUADS)
+        size = 100  # rozmiar płaszczyzny w jednostkach
+        glVertex3f(-size, -size, 0)
+        glVertex3f(size, -size, 0)
+        glVertex3f(size, size, 0)
+        glVertex3f(-size, size, 0)
+        glEnd()
+
+        # (opcjonalnie) Włącz z powrotem oświetlenie
+        glEnable(GL_LIGHTING)
+
         self.draw_grid()
 
         # Podstawa
@@ -170,7 +191,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         # Oś Z (czerwona)
         glColor3f(1.0, 0.0, 0.0)
         glBegin(GL_LINES)
-        glVertex3f(0, 0, -grid_size * spacing)
+        glVertex3f(0, 0, 0)
         glVertex3f(0, 0, grid_size * spacing)
         glEnd()
 
@@ -231,16 +252,24 @@ class MainWindow(QMainWindow):
         control_widget = QWidget()
         control_layout = QVBoxLayout(control_widget)
 
-        # Add title
-        title = QLabel("Robot Joint Control")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
-        control_layout.addWidget(title)
+        kin_group = QGroupBox("Forward Kinematics")
+        kin_group.setStyleSheet("QGroupBox {background-color: #ADD8E6;}")
+        kin_layout = QVBoxLayout(kin_group)
 
         # Create sliders with improvements
         for i in range(6):
-            label = QLabel(f"Joint {i + 1}: 0°")
-            label.setStyleSheet("font-weight: bold; min-width: 100px;")
-            label.setAlignment(Qt.AlignCenter)
+            slider_layout = QVBoxLayout()
+            label_layout = QHBoxLayout()
+            label1 = QLabel(f"Joint {i + 1}: ")
+            label1.setStyleSheet("min-width: 100px; font-size: 12px")
+            label2 = QLabel(f"0°")
+            label2.setStyleSheet("min-width: 15px; font-size: 12px")
+            #label2.setAlignment(Qt.AlignCenter)
+            label_layout.addWidget(label1)
+            label_layout.addWidget(label2)
+            #label_layout.addStretch()
+
+            slider_layout.addLayout(label_layout)
 
             slider = QSlider(Qt.Horizontal)
             slider.setMinimum(-180)
@@ -248,31 +277,48 @@ class MainWindow(QMainWindow):
             slider.setValue(0)
             slider.setTickPosition(QSlider.TicksBelow)
             slider.setTickInterval(30)
-            slider.valueChanged.connect(self.make_slider_handler(i, label))
+            slider.setStyleSheet("""
+                            QSlider::groove:horizontal {
+        border: 1px solid #999;
+        border-radius: 4px;
+        height: 10px;
+        margin: 2px 0;
+        background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 red, stop:0.1667 orange, stop:0.3333 yellow, stop:0.5 green, stop:0.6667 cyan, stop:0.8333 blue, stop:1 violet);
+    }
+    }
+    QSlider::handle:horizontal {
+        width: 16px;
+        margin-top: -4px;
+        margin-bottom: -4px;
+        border-radius: 8px;
+        background-color: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:1, stop:0 #3daee9, stop:0.4 #2f5bb7);
+    }
+                            """)
+            slider.valueChanged.connect(self.make_slider_handler(i, label2))
 
-            control_layout.addWidget(label)
-            control_layout.addWidget(slider)
-            control_layout.addSpacing(5)
+            slider_layout.addWidget(slider)
+
+            slider_layout.addSpacing(5)
             self.sliders.append(slider)
-            self.labels.append(label)
+            #self.labels.append(label)
+            kin_layout.addLayout(slider_layout)
 
-        # Add reset button
-        reset_btn = QPushButton("Reset All Joints")
-        reset_btn.clicked.connect(self.reset_all_joints)
-        control_layout.addWidget(reset_btn)
-        control_layout.addStretch()
+        control_layout.addWidget(kin_group)
+
 
         coord_group = QGroupBox("Inverse Kinematics")
+        coord_group.setStyleSheet("QGroupBox {background-color: #ADD8E6;}")
         coord_layout = QVBoxLayout(coord_group)
 
         # Position coordinates
         pos_label = QLabel("Position:")
-        pos_label.setStyleSheet("font-weight: bold;")
+        pos_label.setStyleSheet("font-weight: bold; font-size: 13px")
         coord_layout.addWidget(pos_label)
 
         # X coordinate
         x_layout = QHBoxLayout()
         x_label = QLabel("X:")
+        x_label.setStyleSheet("font-size: 12px")
         x_label.setMinimumWidth(20)
         self.x_spinbox = QDoubleSpinBox()
         self.x_spinbox.setRange(-10.0, 10.0)
@@ -285,6 +331,7 @@ class MainWindow(QMainWindow):
         # Y coordinate
         y_layout = QHBoxLayout()
         y_label = QLabel("Y:")
+        y_label.setStyleSheet("font-size: 12px")
         y_label.setMinimumWidth(20)
         self.y_spinbox = QDoubleSpinBox()
         self.y_spinbox.setRange(-10.0, 10.0)
@@ -297,9 +344,10 @@ class MainWindow(QMainWindow):
         # Z coordinate
         z_layout = QHBoxLayout()
         z_label = QLabel("Z:")
+        z_label.setStyleSheet("font-size: 12px")
         z_label.setMinimumWidth(20)
         self.z_spinbox = QDoubleSpinBox()
-        self.z_spinbox.setRange(0.0, 10.0)
+        self.z_spinbox.setRange(-10.0, 10.0)
         self.z_spinbox.setSingleStep(0.1)
         self.z_spinbox.setDecimals(2)
         self.z_spinbox.setValue(2.0)
@@ -308,12 +356,13 @@ class MainWindow(QMainWindow):
 
         # Orientation coordinates
         orient_label = QLabel("Orientation:")
-        orient_label.setStyleSheet("font-weight: bold;")
+        orient_label.setStyleSheet("font-weight: bold; font-size: 13px")
         coord_layout.addWidget(orient_label)
 
         # Roll
         roll_layout = QHBoxLayout()
         roll_label = QLabel("Roll:")
+        roll_label.setStyleSheet("font-size: 12px")
         roll_label.setMinimumWidth(20)
         self.roll_spinbox = QDoubleSpinBox()
         self.roll_spinbox.setRange(-180.0, 180.0)
@@ -327,6 +376,7 @@ class MainWindow(QMainWindow):
         # Pitch
         pitch_layout = QHBoxLayout()
         pitch_label = QLabel("Pitch:")
+        pitch_label.setStyleSheet("font-size: 12px")
         pitch_label.setMinimumWidth(20)
         self.pitch_spinbox = QDoubleSpinBox()
         self.pitch_spinbox.setRange(-180.0, 180.0)
@@ -340,6 +390,7 @@ class MainWindow(QMainWindow):
         # Yaw
         yaw_layout = QHBoxLayout()
         yaw_label = QLabel("Yaw:")
+        yaw_label.setStyleSheet("font-size: 12px")
         yaw_label.setMinimumWidth(20)
         self.yaw_spinbox = QDoubleSpinBox()
         self.yaw_spinbox.setRange(-180.0, 180.0)
@@ -356,17 +407,29 @@ class MainWindow(QMainWindow):
 
         # Add all to coordinate group
         coord_layout.addLayout(x_layout)
+        coord_layout.addSpacing(5)
         coord_layout.addLayout(y_layout)
+        coord_layout.addSpacing(5)
         coord_layout.addLayout(z_layout)
         coord_layout.addSpacing(10)  # Add space between position and orientation
         coord_layout.addWidget(orient_label)
         coord_layout.addLayout(roll_layout)
+        coord_layout.addSpacing(5)
         coord_layout.addLayout(pitch_layout)
+        coord_layout.addSpacing(5)
         coord_layout.addLayout(yaw_layout)
+        coord_layout.addSpacing(5)
         coord_layout.addWidget(apply_ik_btn)
 
         # Add the group to main control layout
         control_layout.addWidget(coord_group)
+
+        # Add reset button
+        reset_btn = QPushButton("Reset All Joints")
+        reset_btn.clicked.connect(self.reset_all_joints)
+        control_layout.addWidget(reset_btn)
+
+        control_layout.addStretch()
 
         splitter.addWidget(control_widget)
         splitter.addWidget(self.opengl_widget)
@@ -375,20 +438,23 @@ class MainWindow(QMainWindow):
         splitter.setCollapsible(1, False)
 
         self.opengl_widget.setMinimumWidth(300)
+        control_widget.setMinimumWidth(300)
 
     def make_slider_handler(self, index, label):
         def handler(value):
-            label.setText(f"Joint {index + 1}: {value}°")
+            # Joint {index + 1}:
+            label.setText(f"{value}°")
             self.robot.set_angle(index, value)
             self.opengl_widget.update()
+            x, y, z, yaw, pitch, roll = self.robot.get_gripper_xyz_ypr()
+            self.x_spinbox.setValue(x)
+            self.y_spinbox.setValue(y)
+            self.z_spinbox.setValue(z)
+            self.roll_spinbox.setValue(roll)
+            self.pitch_spinbox.setValue(pitch)
+            self.yaw_spinbox.setValue(yaw)
 
-            # Add visual feedback for limits
-            if abs(value) > 150:
-                label.setStyleSheet("color: orange; font-weight: bold; min-width: 100px;")
-            elif abs(value) > 170:
-                label.setStyleSheet("color: red; font-weight: bold; min-width: 100px;")
-            else:
-                label.setStyleSheet("color: black; font-weight: bold; min-width: 100px;")
+            label.setStyleSheet("color: black; min-width: 100px;")
 
         return handler
 
