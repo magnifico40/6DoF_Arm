@@ -5,6 +5,7 @@ import sys
 import numpy as np
 
 
+
 class RobotArmApp:
     def __init__(self):
         self.step_size = 2
@@ -278,7 +279,7 @@ class RobotArmApp:
 class RobotArm:
     def __init__(self):
         self.angles = np.zeros(6)
-        self.segmentLen = np.array([1, 1, 0.5, 0.25])
+        self.segmentLen = np.array([0.5, 1, 0.5, 0.25])
         self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
         self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
@@ -346,6 +347,9 @@ class RobotArm:
         self.J = np.empty(6, dtype=object)
         self.Jxyz = [0, 0, 0, 0, 0, 0]
         self.ypr = [0, 0, 0]
+
+    def inverse_kinematics(self):
+        pass
 
 
 def main():
