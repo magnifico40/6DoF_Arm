@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QWidget, QSlider, QLabel, QOpenGLWidget, QPushButton,
-    QSplitter
+    QSplitter, QDoubleSpinBox, QGroupBox
 )
 from PyQt5.QtCore import Qt
 from OpenGL.GL import *
@@ -262,9 +262,115 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(reset_btn)
         control_layout.addStretch()
 
+        coord_group = QGroupBox("Inverse Kinematics")
+        coord_layout = QVBoxLayout(coord_group)
+
+        # Position coordinates
+        pos_label = QLabel("Position:")
+        pos_label.setStyleSheet("font-weight: bold;")
+        coord_layout.addWidget(pos_label)
+
+        # X coordinate
+        x_layout = QHBoxLayout()
+        x_label = QLabel("X:")
+        x_label.setMinimumWidth(20)
+        self.x_spinbox = QDoubleSpinBox()
+        self.x_spinbox.setRange(-10.0, 10.0)
+        self.x_spinbox.setSingleStep(0.1)
+        self.x_spinbox.setDecimals(2)
+        self.x_spinbox.setValue(0.0)
+        x_layout.addWidget(x_label)
+        x_layout.addWidget(self.x_spinbox)
+
+        # Y coordinate
+        y_layout = QHBoxLayout()
+        y_label = QLabel("Y:")
+        y_label.setMinimumWidth(20)
+        self.y_spinbox = QDoubleSpinBox()
+        self.y_spinbox.setRange(-10.0, 10.0)
+        self.y_spinbox.setSingleStep(0.1)
+        self.y_spinbox.setDecimals(2)
+        self.y_spinbox.setValue(0.0)
+        y_layout.addWidget(y_label)
+        y_layout.addWidget(self.y_spinbox)
+
+        # Z coordinate
+        z_layout = QHBoxLayout()
+        z_label = QLabel("Z:")
+        z_label.setMinimumWidth(20)
+        self.z_spinbox = QDoubleSpinBox()
+        self.z_spinbox.setRange(0.0, 10.0)
+        self.z_spinbox.setSingleStep(0.1)
+        self.z_spinbox.setDecimals(2)
+        self.z_spinbox.setValue(2.0)
+        z_layout.addWidget(z_label)
+        z_layout.addWidget(self.z_spinbox)
+
+        # Orientation coordinates
+        orient_label = QLabel("Orientation:")
+        orient_label.setStyleSheet("font-weight: bold;")
+        coord_layout.addWidget(orient_label)
+
+        # Roll
+        roll_layout = QHBoxLayout()
+        roll_label = QLabel("Roll:")
+        roll_label.setMinimumWidth(20)
+        self.roll_spinbox = QDoubleSpinBox()
+        self.roll_spinbox.setRange(-180.0, 180.0)
+        self.roll_spinbox.setSingleStep(1.0)
+        self.roll_spinbox.setDecimals(1)
+        self.roll_spinbox.setValue(0.0)
+        self.roll_spinbox.setSuffix("°")
+        roll_layout.addWidget(roll_label)
+        roll_layout.addWidget(self.roll_spinbox)
+
+        # Pitch
+        pitch_layout = QHBoxLayout()
+        pitch_label = QLabel("Pitch:")
+        pitch_label.setMinimumWidth(20)
+        self.pitch_spinbox = QDoubleSpinBox()
+        self.pitch_spinbox.setRange(-180.0, 180.0)
+        self.pitch_spinbox.setSingleStep(1.0)
+        self.pitch_spinbox.setDecimals(1)
+        self.pitch_spinbox.setValue(0.0)
+        self.pitch_spinbox.setSuffix("°")
+        pitch_layout.addWidget(pitch_label)
+        pitch_layout.addWidget(self.pitch_spinbox)
+
+        # Yaw
+        yaw_layout = QHBoxLayout()
+        yaw_label = QLabel("Yaw:")
+        yaw_label.setMinimumWidth(20)
+        self.yaw_spinbox = QDoubleSpinBox()
+        self.yaw_spinbox.setRange(-180.0, 180.0)
+        self.yaw_spinbox.setSingleStep(1.0)
+        self.yaw_spinbox.setDecimals(1)
+        self.yaw_spinbox.setValue(0.0)
+        self.yaw_spinbox.setSuffix("°")
+        yaw_layout.addWidget(yaw_label)
+        yaw_layout.addWidget(self.yaw_spinbox)
+
+        # Apply button
+        apply_ik_btn = QPushButton("Apply IK")
+        apply_ik_btn.clicked.connect(self.apply_inverse_kinematics)
+
+        # Add all to coordinate group
+        coord_layout.addLayout(x_layout)
+        coord_layout.addLayout(y_layout)
+        coord_layout.addLayout(z_layout)
+        coord_layout.addSpacing(10)  # Add space between position and orientation
+        coord_layout.addWidget(orient_label)
+        coord_layout.addLayout(roll_layout)
+        coord_layout.addLayout(pitch_layout)
+        coord_layout.addLayout(yaw_layout)
+        coord_layout.addWidget(apply_ik_btn)
+
+        # Add the group to main control layout
+        control_layout.addWidget(coord_group)
+
         splitter.addWidget(control_widget)
         splitter.addWidget(self.opengl_widget)
-        splitter.setSizes([300, 900])  # 300px for controls, 900px for 3D view
+        splitter.setSizes([300, 900])
         splitter.setCollapsible(0, False)
         splitter.setCollapsible(1, False)
 
@@ -290,9 +396,38 @@ class MainWindow(QMainWindow):
         for slider in self.sliders:
             slider.setValue(0)
 
-# -------------------------------------------------------------
-# Uruchomienie aplikacji
-# -------------------------------------------------------------
+    def apply_inverse_kinematics(self):
+        # Get target coordinates
+        target_x = self.x_spinbox.value()
+        target_y = self.y_spinbox.value()
+        target_z = self.z_spinbox.value()
+
+        # Get target orientation
+        target_roll = self.roll_spinbox.value()
+        target_pitch = self.pitch_spinbox.value()
+        target_yaw = self.yaw_spinbox.value()
+
+        # Call inverse kinematics on your robot
+        try:
+            # Assuming your RobotArm class has an inverse kinematics method that accepts orientation
+            success = self.robot.inverse_kinematics(
+                target_x, target_y, target_z,
+                target_roll, target_pitch, target_yaw
+            )
+
+            if success:
+                # Update sliders to reflect new joint angles
+                angles = self.robot.get_angles()
+                for i, angle in enumerate(angles):
+                    self.sliders[i].setValue(int(angle))  # This will trigger your handlers
+            else:
+                # Show error message if position is unreachable
+                self.show_ik_error("Target position/orientation is unreachable")
+
+        except Exception as e:
+            self.show_ik_error(f"IK calculation failed: {str(e)}")
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
