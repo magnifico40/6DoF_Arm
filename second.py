@@ -289,6 +289,7 @@ class RobotArm:
         self.J = np.empty(6, dtype=object)
         self.Jxyz = np.empty(6, dtype=object)
         self.ypr = np.empty(3, dtype=object)
+        self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
 
     def set_angle(self, index, value):
         self.angles[index] = value
@@ -299,12 +300,19 @@ class RobotArm:
     def get_segments_len(self):
         return self.segmentLen
 
+    def get_joints_limits(self):
+        return self.JointLimits
+
+    def get_gripper_xyz_ypr(self):
+        Jxyz, ypr = self.get_joints_xyz_ypr()
+        return Jxyz[5][0], Jxyz[5][1], Jxyz[5][2], ypr[0], ypr[1], ypr[2]
+
     def get_joints_xyz_ypr(self):
-        self.dh_matrix()
-        self.joints_xyz()
+        self._dh_matrix()
+        self._joints_xyz()
         return self.Jxyz, self.ypr
 
-    def dh_matrix(self):
+    def _dh_matrix(self):
         # notation same as in yt vid
         self.theta_val = np.radians(self.angles) + self.theta_increments
         for i in range(6):
@@ -320,7 +328,7 @@ class RobotArm:
 
             self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
 
-    def joints_xyz(self):
+    def _joints_xyz(self):
         for i in range(6):
             if i != 0:
                 self.J[i] = self.J[i-1] @ self.T[i]
@@ -331,22 +339,29 @@ class RobotArm:
         R = self.J[5][:3, :3]
 
         # y,x
-        self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2]))   # (r32, r33)
-        self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[1, 0] ** 2 + R[0, 0] ** 2)))
-        self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0])) 
+        # self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2]))   # (r32, r33)
+        # self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[1, 0] ** 2 + R[0, 0] ** 2)))
+        # self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0]))
+        self.ypr[2] = np.degrees(np.arcsin(R[2, 1]))
+
+        # Handle potential gimbal lock
+        if abs(R[2, 1]) < 0.99999:
+            # Yaw (Z-axis rotation)
+            self.ypr[0] = np.degrees(np.arctan2(-R[0, 1], R[1, 1]))
+            # Pitch (Y-axis rotation)
+            self.ypr[1] = np.degrees(np.arctan2(-R[2, 0], R[2, 2]))
+        else:
+            # Gimbal lock: approximate yaw and pitch
+            self.ypr[0] = np.degrees(np.arctan2(R[1, 0], R[0, 0]))
+            self.ypr[1] = 0  # set pitch to zero or leave as-is
 
     def reset_angles(self):
         self.angles = np.zeros(6)
-        self.segmentLen = np.array([1, 1, 0.5, 0.25])
-        self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
-        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
-        self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
-        theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
-        self.theta_val = np.radians(self.angles) + theta_increments
+        self.theta_val = np.radians(self.angles) + self.theta_increments
         self.T = np.empty(6, dtype=object)
         self.J = np.empty(6, dtype=object)
-        self.Jxyz = [0, 0, 0, 0, 0, 0]
-        self.ypr = [0, 0, 0]
+        self.Jxyz = np.empty(6, dtype=object)
+        self.ypr = np.empty(3, dtype=object)
 
     def inverse_kinematics(self):
         pass
