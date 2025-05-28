@@ -1,12 +1,11 @@
 import sys
 import numpy as np
-
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
-    QWidget, QSlider, QLabel, QOpenGLWidget
+    QWidget, QSlider, QLabel, QOpenGLWidget, QPushButton,
+    QSplitter
 )
 from PyQt5.QtCore import Qt
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -216,7 +215,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Robot Arm Control - PyQt5 + OpenGL")
-        self.resize(1000, 600)
+        self.resize(1200, 900)
 
         self.robot = RobotArm()
 
@@ -224,36 +223,72 @@ class MainWindow(QMainWindow):
         self.sliders = []
         self.labels = []
 
-        main_widget = QWidget()
+        splitter = QSplitter(Qt.Horizontal)
+        main_widget = splitter  # Use splitter as main widget
         self.setCentralWidget(main_widget)
 
-        layout = QHBoxLayout()
-        main_widget.setLayout(layout)
-
         # Panel suwaków
-        control_panel = QVBoxLayout()
+        control_widget = QWidget()
+        control_layout = QVBoxLayout(control_widget)
+
+        # Add title
+        title = QLabel("Robot Joint Control")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
+        control_layout.addWidget(title)
+
+        # Create sliders with improvements
         for i in range(6):
-            label = QLabel(f"Joint {i+1}: 0°")
+            label = QLabel(f"Joint {i + 1}: 0°")
+            label.setStyleSheet("font-weight: bold; min-width: 100px;")
+            label.setAlignment(Qt.AlignCenter)
+
             slider = QSlider(Qt.Horizontal)
             slider.setMinimum(-180)
             slider.setMaximum(180)
             slider.setValue(0)
+            slider.setTickPosition(QSlider.TicksBelow)
+            slider.setTickInterval(30)
             slider.valueChanged.connect(self.make_slider_handler(i, label))
 
-            control_panel.addWidget(label)
-            control_panel.addWidget(slider)
+            control_layout.addWidget(label)
+            control_layout.addWidget(slider)
+            control_layout.addSpacing(5)
             self.sliders.append(slider)
             self.labels.append(label)
 
-        layout.addLayout(control_panel, 1)
-        layout.addWidget(self.opengl_widget, 4)
+        # Add reset button
+        reset_btn = QPushButton("Reset All Joints")
+        reset_btn.clicked.connect(self.reset_all_joints)
+        control_layout.addWidget(reset_btn)
+        control_layout.addStretch()
+
+        splitter.addWidget(control_widget)
+        splitter.addWidget(self.opengl_widget)
+        splitter.setSizes([300, 900])  # 300px for controls, 900px for 3D view
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+
+        self.opengl_widget.setMinimumWidth(300)
 
     def make_slider_handler(self, index, label):
         def handler(value):
-            label.setText(f"Joint {index+1}: {value}°")
+            label.setText(f"Joint {index + 1}: {value}°")
             self.robot.set_angle(index, value)
             self.opengl_widget.update()
+
+            # Add visual feedback for limits
+            if abs(value) > 150:
+                label.setStyleSheet("color: orange; font-weight: bold; min-width: 100px;")
+            elif abs(value) > 170:
+                label.setStyleSheet("color: red; font-weight: bold; min-width: 100px;")
+            else:
+                label.setStyleSheet("color: black; font-weight: bold; min-width: 100px;")
+
         return handler
+
+    def reset_all_joints(self):
+        for slider in self.sliders:
+            slider.setValue(0)
 
 # -------------------------------------------------------------
 # Uruchomienie aplikacji
