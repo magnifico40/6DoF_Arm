@@ -232,6 +232,48 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
 
 
+class MyButton(QPushButton):
+    def __init__(self, text=""):
+        super().__init__(text)
+        self.setStyleSheet("""
+                    QPushButton {
+                        background-color: #4CAF50; /* Green */
+                        border: none;
+                        color: white;
+                        padding: 15px 32px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 16px;
+                    }
+                    QPushButton:hover {
+                        background-color: #45a049; /* Darker green */
+                    }
+                """)
+
+
+class MySlider(QSlider):
+    def __init__(self, orientation=None):
+        super().__init__(orientation)
+        self.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999;
+                border-radius: 4px;
+                height: 10px;
+                margin: 2px 0;
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 red, stop:0.1667 orange, stop:0.3333 yellow, stop:0.5 green, stop:0.6667 cyan, stop:0.8333 blue, stop:1 violet);
+            }
+            }
+            QSlider::handle:horizontal {
+                width: 16px;
+                margin-top: -4px;
+                margin-bottom: -4px;
+                border-radius: 8px;
+                background-color: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:1, stop:0 #3daee9, stop:0.4 #2f5bb7);
+            }
+        """)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -257,6 +299,7 @@ class MainWindow(QMainWindow):
         kin_layout = QVBoxLayout(kin_group)
 
         # Create sliders with improvements
+        limits = self.robot.get_joints_limits()
         for i in range(6):
             slider_layout = QVBoxLayout()
             label_layout = QHBoxLayout()
@@ -264,36 +307,17 @@ class MainWindow(QMainWindow):
             label1.setStyleSheet("min-width: 100px; font-size: 12px")
             label2 = QLabel(f"0°")
             label2.setStyleSheet("min-width: 15px; font-size: 12px")
-            #label2.setAlignment(Qt.AlignCenter)
             label_layout.addWidget(label1)
             label_layout.addWidget(label2)
-            #label_layout.addStretch()
 
             slider_layout.addLayout(label_layout)
 
-            slider = QSlider(Qt.Horizontal)
-            slider.setMinimum(-180)
-            slider.setMaximum(180)
+            slider = MySlider(Qt.Horizontal)
+            slider.setMinimum(limits[i][0])
+            slider.setMaximum(limits[i][1])
             slider.setValue(0)
             slider.setTickPosition(QSlider.TicksBelow)
             slider.setTickInterval(30)
-            slider.setStyleSheet("""
-                            QSlider::groove:horizontal {
-        border: 1px solid #999;
-        border-radius: 4px;
-        height: 10px;
-        margin: 2px 0;
-        background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 red, stop:0.1667 orange, stop:0.3333 yellow, stop:0.5 green, stop:0.6667 cyan, stop:0.8333 blue, stop:1 violet);
-    }
-    }
-    QSlider::handle:horizontal {
-        width: 16px;
-        margin-top: -4px;
-        margin-bottom: -4px;
-        border-radius: 8px;
-        background-color: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:1, stop:0 #3daee9, stop:0.4 #2f5bb7);
-    }
-                            """)
             slider.valueChanged.connect(self.make_slider_handler(i, label2))
 
             slider_layout.addWidget(slider)
@@ -402,7 +426,8 @@ class MainWindow(QMainWindow):
         yaw_layout.addWidget(self.yaw_spinbox)
 
         # Apply button
-        apply_ik_btn = QPushButton("Apply IK")
+        apply_ik_btn = MyButton("Apply IK")
+
         apply_ik_btn.clicked.connect(self.apply_inverse_kinematics)
 
         # Add all to coordinate group
@@ -425,7 +450,8 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(coord_group)
 
         # Add reset button
-        reset_btn = QPushButton("Reset All Joints")
+        reset_btn = MyButton("Reset All Joints")
+
         reset_btn.clicked.connect(self.reset_all_joints)
         control_layout.addWidget(reset_btn)
 
