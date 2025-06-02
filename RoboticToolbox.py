@@ -14,7 +14,7 @@ pamiętaj by interpreter jeszcze wybrać z venv2
 
 
 
-
+import time
 import sys
 import numpy as np
 from roboticstoolbox import DHRobot, RevoluteDH
@@ -22,7 +22,7 @@ from spatialmath import SE3
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QWidget, QSlider, QLabel, QOpenGLWidget, QPushButton,
-    QSplitter, QDoubleSpinBox, QGroupBox
+    QSplitter, QDoubleSpinBox, QGroupBox, QMessageBox
 )
 from PyQt5.QtCore import Qt
 from OpenGL.GL import *
@@ -45,9 +45,19 @@ class RobotArm:
         self.Jxyz = np.empty(6, dtype=object)
         self.ypr = np.empty(3, dtype=object)
         self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
+        self.targetXYZ = [0, 0, 0]
         self.links = [RevoluteDH(d=self.dValues[i], a= self.a_val[i], alpha=self.alpha_val[i], offset=self.theta_increments[i]) for i in range(6)]
         self.robotModel = DHRobot(self.links, name="MyRobot")
+    
+    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 100):
+        return [startingAngles + (endingAngles - startingAngles) * t for t in np.linspace(0, 1, TrajetorySteps)]
+    
+    def set_target_xyz(self, xyz):
+        for i in range(3):
+            self.targetXYZ[i] = xyz[i]
 
+    def get_target_xyz(self):
+        return self.targetXYZ
 
     def set_angle(self, index, value):
         self.angles[index] = value
@@ -118,13 +128,17 @@ class RobotArm:
 
     def inverse_kinematics(self, xyz, ypr, initial_angles):
         #xyz, ypr - arrays
-        TargetMatrix = SE3(xyz) * SE3.RPY(ypr, unit='deg')
-        solution = self.robotModel.ikine_LM(TargetMatrix, q0 = initial_angles) # result in radians
-        if solution.success:
-            return solution.q
-        else:
-             print("Nie znaleziono rozwiązania.")
-             return None
+        try:
+            TargetMatrix = SE3(xyz) * SE3.RPY(ypr, unit='deg')
+            solution = self.robotModel.ikine_LM(TargetMatrix, q0 = initial_angles) # result in radians
+            if solution.success:
+                return solution.q, solution.success
+            else:
+                print("Nie znaleziono rozwiązania.")
+                return None, False
+        except Exception as e:
+            print(f" Błąd podczas obliczania IK: {e}")
+            return None, False
         
 
 class RobotOpenGLWidget(QOpenGLWidget):
@@ -218,6 +232,10 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         self.draw_gripper()
         glPopMatrix()
+        
+        glPushMatrix()
+        self.draw_target()
+        glPopMatrix()
 
     def draw_segment(self, length):
         glPushMatrix()
@@ -254,7 +272,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         grid_size = 25
         spacing = 0.4
         arrow_size = 0.3
-        arrow_pos = 5 * spacing  # <--- pozycja grotów osi bliżej środka
+        arrow_pos = 5 * spacing 
 
         glPushMatrix()
 
@@ -275,32 +293,34 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         glLineWidth(3.0)
 
+        h = 0.001    #Z offset
+
         # Oś Y (niebieska)
         glColor3f(0.0, 0.0, 1.0)
         glBegin(GL_LINES)
-        glVertex3f(0, -grid_size * spacing, 0)
-        glVertex3f(0, grid_size * spacing, 0)
+        glVertex3f(0, -grid_size * spacing, h)
+        glVertex3f(0, grid_size * spacing, h)
         glEnd()
         # Strzałka Y
         glBegin(GL_LINES)
-        glVertex3f(0, arrow_pos, 0)
-        glVertex3f(arrow_size, arrow_pos - arrow_size, 0)
-        glVertex3f(0, arrow_pos, 0)
-        glVertex3f(-arrow_size, arrow_pos - arrow_size, 0)
+        glVertex3f(0, arrow_pos, h)
+        glVertex3f(arrow_size, arrow_pos - arrow_size, h)
+        glVertex3f(0, arrow_pos, h)
+        glVertex3f(-arrow_size, arrow_pos - arrow_size, h)
         glEnd()
 
         # Oś X (zielona)
         glColor3f(0.0, 1.0, 0.0)
         glBegin(GL_LINES)
-        glVertex3f(-grid_size * spacing, 0, 0)
-        glVertex3f(grid_size * spacing, 0, 0)
+        glVertex3f(-grid_size * spacing, 0, h)
+        glVertex3f(grid_size * spacing, 0, h)
         glEnd()
         # Strzałka X
         glBegin(GL_LINES)
-        glVertex3f(arrow_pos, 0, 0)
-        glVertex3f(arrow_pos - arrow_size, arrow_size, 0)
-        glVertex3f(arrow_pos, 0, 0)
-        glVertex3f(arrow_pos - arrow_size, -arrow_size, 0)
+        glVertex3f(arrow_pos, 0, h)
+        glVertex3f(arrow_pos - arrow_size, arrow_size, h)
+        glVertex3f(arrow_pos, 0, h)
+        glVertex3f(arrow_pos - arrow_size, -arrow_size, h)
         glEnd()
 
         # Oś Z (czerwona)
@@ -313,49 +333,94 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
         glEnable(GL_LIGHTING)
 
-    def draw_target(self, xyz):
-        glPointSize(int(1 * 100))  # np. skala do widoczności
-        glBegin(GL_POINTS)
-        glVertex3f(0, 0, 0)
-        glEnd()
+    def draw_target(self):
+        #trochę na szybko
+        xyz = self.robot.get_target_xyz()
 
-        glPushMatrix()
-        glTranslatef(xyz[0], xyz[1], xyz[2])
-        self.draw_segment(0.1)
-        glPopMatrix()
-    
+        x, y, z = 0, 0, 0
+        #small translation, so we can se target better
+        #if xyz[0]>0: x = 0.1
+        #elif xyz[0]<0: x = -0.1
+        #if xyz[1]>0: y = 0.1
+        #elif xyz[1]<0: y = -0.1
+        #if xyz[2]>0: z = 0.1
+        #elif xyz[2]<0: z = -0.1
+        glTranslatef(x, y, z)
+
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        glEnable(GL_POINT_SMOOTH)
+        glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
+
+        glPointSize(15.0)
+        glColor4f(1.0, 0.7, 0.2, 0.2) 
+
+        glBegin(GL_POINTS)
+        glVertex3f(xyz[0], xyz[1], xyz[2])
+        glEnd()      
     def draw_gripper(self):
+        def draw_finger():
+            base = 0.2
+            height = 1.0
+
+            glBegin(GL_TRIANGLES)
+            apex = (0.0, 0.0, height)
+            base_pts = [
+                (-base/2, -base/2, 0.0),
+                ( base/2, -base/2, 0.0),
+                ( base/2,  base/2, 0.0),
+                (-base/2,  base/2, 0.0)
+            ]
+            for i in range(4):
+                p1 = base_pts[i]
+                p2 = base_pts[(i+1) % 4]
+                glVertex3f(*p1)
+                glVertex3f(*p2)
+                glVertex3f(*apex)
+            glEnd()
+
+            glBegin(GL_QUADS)
+            for pt in base_pts:
+                glVertex3f(*pt)
+            glEnd()
+
         glPushMatrix()
 
         finger_length = 0.3
         finger_width = 0.3
         spacing = 0.06  # odstęp od środka
+        angle = 30      # kąt nachylenia palców do środka (stopnie)
 
-        glColor3f(0.0, 0.0, 0.0)
+        glColor3f(0.1, 0.1, 0.1)
 
-        # Lewy palec
+        # Lewy palec - obrót w kierunku środka (+angle)
         glPushMatrix()
         glTranslatef(-spacing, -spacing/2, 0.0)
+        glRotatef(angle, 0.0, 0.0, 1.0)  # obrót wokół osi Z
         glScalef(finger_width, finger_width, finger_length)
-        self.draw_segment(1)
+        draw_finger()
         glPopMatrix()
 
-        # Prawy palec
+        # Prawy palec - obrót w kierunku środka (-angle)
         glPushMatrix()
         glTranslatef(spacing, -spacing/2, 0.0)
+        glRotatef(-angle, 0.0, 0.0, 1.0) # obrót wokół osi Z
         glScalef(finger_width, finger_width, finger_length)
-        self.draw_segment(1)
+        draw_finger()
         glPopMatrix()
 
-        # Górny palec (nad środkiem)
+        # Górny palec (nad środkiem) bez zmiany lub ew. lekki obrót
         glPushMatrix()
         glTranslatef(0.0, spacing, 0.0)
-        glRotatef(90, 0.0, 0.0, 1.0)  # obrót o 90° żeby palec był pionowy
+        glRotatef(90, 0.0, 0.0, 1.0)  # pionowo
+        # jeśli chcesz, możesz dodać też obrót, np. glRotatef(5, 1, 0, 0)
         glScalef(finger_width, finger_width, finger_length)
-        self.draw_segment(1)
+        draw_finger()
         glPopMatrix()
 
         glPopMatrix()
+
 
 
 class MyButton(QPushButton):
@@ -625,26 +690,30 @@ class MainWindow(QMainWindow):
         target_yaw = self.yaw_spinbox.value()
 
         xyz = [target_x, target_y, target_z]
-        #ypr = [target_yaw, target_pitch, target_roll]
         rpy = [target_roll, target_pitch, target_yaw]  
 
-        self.opengl_widget.draw_target(xyz)
+        self.robot.set_target_xyz(xyz)
 
         initial_angles = self.robot.get_angles()
 
-        try:
-            angles = self.robot.inverse_kinematics(xyz, rpy, initial_angles)
+        angles, success = self.robot.inverse_kinematics(xyz, rpy, initial_angles)
+
+        if success:
             angles_deg = np.degrees(angles)
             angles_deg_int = np.rint(angles_deg).astype(int)
             print(angles_deg)
-
-            for i in range(6):
-                self.sliders[i].setValue(angles_deg_int[i])
-                self.robot.set_angle(i, angles_deg[i])
-
-        except:
-            print(f"Position unreachable")
-
+            trajectory = self.robot.joint_trajectory(initial_angles, angles_deg)
+            for q in trajectory:
+                transitional_angles = q
+                transitional_angles_int = np.rint(transitional_angles).astype(int)
+                for i in range(6):
+                    self.sliders[i].setValue(transitional_angles_int[i])
+                    self.robot.set_angle(i, transitional_angles[i])
+                time.sleep(0.001)    
+                QApplication.processEvents()    #odswierzenie GUI
+        else:
+            #print("Inverse Kinematics Impossible")
+            QMessageBox.warning(self, "Inverse Kinematics", "Nie udało się znaleźć rozwiązania IK.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -652,19 +721,7 @@ if __name__ == "__main__":
     window.show()
     sys.exit(app.exec_())
         
-
-"""
-try:
-    angles = self.robot.inverse_kinematics(xyz, ypr)
-    angles_deg = np.degrees(angles)
-    print(angles_deg)
-    for i in range(6):
-        #self.sliders[i].setValue(angles_deg[i])
-        self.robot.set_angle(i, angles_deg[i])
-except Exception as e:
-    print(f"IK calculation failed: {str(e)}")
-"""       
-                
+          
         
         
         
