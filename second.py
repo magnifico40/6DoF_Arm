@@ -419,7 +419,7 @@ class RobotArm:
         P46 = d6 * T[:3, 2]
         P04 = P06 - P46
 
-        new_theta[0] = np.arctan2(P06[1] - P46[1], P06[0] - P46[0])
+        new_theta[0] = np.arctan2(P04[1], P04[0])
 
         d1 = d[0]
         a = self.a_val
@@ -428,14 +428,12 @@ class RobotArm:
         P14 = P04 - P01
 
         P14L = np.linalg.norm(P14)
-        l1 = np.sqrt(np.pow(a[2], 2) + np.pow(d[3], 2))
 
-        fi = np.arccos((np.pow(l1, 2) + np.pow(a[1], 2) - np.pow(P14L, 2)) / (2 * l1 * a[1]))
-        dzeta = 0 # np.arctan2(d[3], a[3])
-        new_theta[2] = fi - dzeta - np.pi/2
+        fi = np.arccos((np.pow(d[3], 2) + np.pow(a[1], 2) - np.pow(P14L, 2)) / (2 * d[3] * a[1]))
+        new_theta[2] = np.pi - fi
 
         beta1 = np.arctan2(P14[2], np.sqrt(np.pow(P14[0], 2) + np.pow(P14[1], 2)))
-        beta2 = np.arccos((np.pow(a[1], 2) + np.pow(P14L, 2) - np.pow(l1, 2)) / (2 * a[1] * P14L))
+        beta2 = np.arccos((np.pow(a[1], 2) + np.pow(P14L, 2) - np.pow(d[3], 2)) / (2 * a[1] * P14L))
 
         new_theta[1] = beta1 + beta2 - np.pi/2
 
