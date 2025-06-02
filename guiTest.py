@@ -86,7 +86,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         # nadgarstek
         glRotatef(angles[2], 1, 0, 0)
-        glRotatef(90, 1, 0, 0)
+        glRotatef(-90, 1, 0, 0)
         glRotatef(angles[3], 0, 0, 1)  # roll
         glTranslatef(0.0, 0.0, segmentLen[2] / 2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
@@ -99,7 +99,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
         self.draw_segment(segmentLen[3])
         glTranslatef(0.0, 0.0, segmentLen[3] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
+
 
         self.draw_gripper()
         glPopMatrix()
@@ -137,7 +137,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
     def draw_grid(self):
         glDisable(GL_LIGHTING)
         grid_size = 25
-        spacing = 0.4
+        spacing = 0.5
         arrow_size = 0.3
         arrow_pos = 5 * spacing  # <--- pozycja grotów osi bliżej środka
 
@@ -209,6 +209,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         # Lewy palec
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
         glTranslatef(-spacing, -spacing/2, 0.0)
         glScalef(finger_width, finger_width, finger_length)
         self.draw_segment(1)
@@ -216,6 +217,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         # Prawy palec
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
         glTranslatef(spacing, -spacing/2, 0.0)
         glScalef(finger_width, finger_width, finger_length)
         self.draw_segment(1)
@@ -223,6 +225,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         # Górny palec (nad środkiem)
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0, 0.55, 0, 1.0])
         glTranslatef(0.0, spacing, 0.0)
         glRotatef(90, 0.0, 0.0, 1.0)  # obrót o 90° żeby palec był pionowy
         glScalef(finger_width, finger_width, finger_length)
@@ -499,25 +502,16 @@ class MainWindow(QMainWindow):
         target_pitch = self.pitch_spinbox.value()
         target_yaw = self.yaw_spinbox.value()
 
-        # Call inverse kinematics on your robot
-        try:
-            # Assuming your RobotArm class has an inverse kinematics method that accepts orientation
-            success = self.robot.inverse_kinematics(
-                target_x, target_y, target_z,
-                target_roll, target_pitch, target_yaw
-            )
+        self.robot.inverse_kinematics_full([target_x, target_y, target_z], [target_yaw, target_pitch, target_roll])
+        self.opengl_widget.update()
+        angles = self.robot.get_angles()
+        for i in range(6):
+            try:
+                self.sliders[i].setValue(int(angles[i]))
+            except:
+                print("cant achieve position")
 
-            if success:
-                # Update sliders to reflect new joint angles
-                angles = self.robot.get_angles()
-                for i, angle in enumerate(angles):
-                    self.sliders[i].setValue(int(angle))  # This will trigger your handlers
-            else:
-                # Show error message if position is unreachable
-                self.show_ik_error("Target position/orientation is unreachable")
 
-        except Exception as e:
-            self.show_ik_error(f"IK calculation failed: {str(e)}")
 
 
 if __name__ == "__main__":
@@ -525,3 +519,4 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+

@@ -166,7 +166,7 @@ class RobotArmApp:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-        gluLookAt(5, 0, 8, 0, 0, 0, 0, 0, 1)
+        gluLookAt(5, 1, 6, 0, 0, 0, 0, 0, 1)
 
         self.draw_grid()
         # Podstawa
@@ -186,7 +186,7 @@ class RobotArmApp:
 
         # nadgarstek
         glRotatef(angles[2], 1, 0, 0)
-        glRotatef(90, 1, 0, 0)
+        glRotatef(-90, 1, 0, 0)
         glRotatef(angles[3], 0, 0, 1)  # roll
         glTranslatef(0.0, 0.0, segmentLen[2]/2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
@@ -214,7 +214,7 @@ class RobotArmApp:
 
         self.draw_text(600, 570, f"Joint1: {xyz[0][0]:.2f}, {xyz[0][1]:.2f}, {xyz[0][2]:.2f}")
         self.draw_text(600, 545, f"Joint2: {xyz[1][0]:.2f}, {xyz[1][1]:.2f}, {xyz[1][2]:.2f}")
-        self.draw_text(600, 520, f"Joint3: {xyz[2][0]:.2f}, {xyz[2][1]:.2f}, {xyz[2][2]:.2f}")
+        self.draw_text(600, 520, f"Joint3: {xyz[3][0]:.2f}, {xyz[3][1]:.2f}, {xyz[3][2]:.2f}")
         self.draw_text(600, 495, f"Gripper: {xyz[5][0]:.2f}, {xyz[5][1]:.2f}, {xyz[5][2]:.2f} ")
         self.draw_text(600, 470, f"Y/P/R: {ypr[0]:.2f}, {ypr[1]:.2f}, {ypr[2]:.2f}")
 
@@ -282,14 +282,14 @@ class RobotArm:
         self.segmentLen = np.array([0.5, 1, 0.5, 0.25])
         self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
         self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
-        self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
-        self.theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
+        self.alpha_val = np.array(np.radians([90, 0, 90, -90, 90, 0]))
+        self.theta_increments = np.radians([0, 90, 0, 0, 0, 0])
         self.theta_val = np.radians(self.angles) + self.theta_increments
         self.T = np.empty(6, dtype=object)
         self.J = np.empty(6, dtype=object)
         self.Jxyz = np.empty(6, dtype=object)
-        self.ypr = np.empty(3, dtype=object)
-        self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
+        self.ypr = np.zeros(3)
+        self.JointLimits = np.array([[-180, 180], [-180, 180], [-180, 180], [-180, 180], [-180, 180], [-180, 180]])
 
     def set_angle(self, index, value):
         self.angles[index] = value
@@ -308,8 +308,9 @@ class RobotArm:
         return Jxyz[5][0], Jxyz[5][1], Jxyz[5][2], ypr[0], ypr[1], ypr[2]
 
     def get_joints_xyz_ypr(self):
-        self._dh_matrix()
-        self._joints_xyz()
+        # self._dh_matrix()
+        # self._joints_xyz()
+        self.kinematics(self.angles)
         return self.Jxyz, self.ypr
 
     def _dh_matrix(self):
@@ -339,21 +340,9 @@ class RobotArm:
         R = self.J[5][:3, :3]
 
         # y,x
-        # self.ypr[0] = np.degrees(np.atan2(R[2, 1], R[2, 2]))   # (r32, r33)
-        # self.ypr[1] = np.degrees(np.atan2(-R[2, 0], np.sqrt(R[1, 0] ** 2 + R[0, 0] ** 2)))
-        # self.ypr[2] = np.degrees(np.atan2(R[1, 0], R[0, 0]))
-        self.ypr[2] = np.degrees(np.arcsin(R[2, 1]))
-
-        # Handle potential gimbal lock
-        if abs(R[2, 1]) < 0.99999:
-            # Yaw (Z-axis rotation)
-            self.ypr[0] = np.degrees(np.arctan2(-R[0, 1], R[1, 1]))
-            # Pitch (Y-axis rotation)
-            self.ypr[1] = np.degrees(np.arctan2(-R[2, 0], R[2, 2]))
-        else:
-            # Gimbal lock: approximate yaw and pitch
-            self.ypr[0] = np.degrees(np.arctan2(R[1, 0], R[0, 0]))
-            self.ypr[1] = 0  # set pitch to zero or leave as-is
+        self.ypr[0] = np.degrees(np.atan2(R[1, 2], R[0, 2]))
+        self.ypr[1] = np.degrees(np.atan2(np.sqrt(1-np.pow(R[2, 2], 2)), R[2, 2]))
+        self.ypr[2] = np.degrees(np.atan2(R[2, 1], -R[2, 0]))
 
     def reset_angles(self):
         self.angles = np.zeros(6)
@@ -361,10 +350,132 @@ class RobotArm:
         self.T = np.empty(6, dtype=object)
         self.J = np.empty(6, dtype=object)
         self.Jxyz = np.empty(6, dtype=object)
-        self.ypr = np.empty(3, dtype=object)
+        self.ypr = np.zeros(3)
+        self._dh_matrix()
 
-    def inverse_kinematics(self):
-        pass
+    def kinematics(self, angles):
+        self.theta_val = np.radians(angles) + self.theta_increments
+
+        for i in range(6):
+            ct, st = np.cos(self.theta_val[i]), np.sin(self.theta_val[i])
+            ca, sa = np.cos(self.alpha_val[i]), np.sin(self.alpha_val[i])
+
+            self.T[i] = np.array([
+                [ct,    -st * ca,   st * sa,    self.a_val[i] * ct],
+                [st,    ct * ca,    -ct * sa,   self.a_val[i] * st],
+                [0,     sa,         ca,         self.d_val[i]],
+                [0,     0,          0,          1]
+            ])
+
+        for j in range(6):
+            if j != 0:
+                self.J[j] = self.J[j-1] @ self.T[j]
+            else:
+                self.J[j] = self.T[j]
+            self.Jxyz[j] = self.J[j][:3, 3]
+
+
+
+        R = Tip = self.J[5][:3, :3]
+        # Euler
+        Z_e = np.arctan2(Tip[1][2], Tip[0][2])
+        Yp_e = np.arctan2(np.sqrt(1 - np.pow(Tip[2][2], 2)), Tip[2][2])
+        Zpp_e = np.arctan2(Tip[2][1], -Tip[2][0])
+
+        # pitch = -np.arcsin(R[2, 0])
+        # roll = np.arctan2(R[2, 1] / np.cos(pitch), R[2, 2] / np.cos(pitch))
+        # yaw = np.arctan2(R[1, 0] / np.cos(pitch), R[0, 0] / np.cos(pitch))
+        #
+        # # Tait-bryan
+        # X_t = np.degrees(np.arctan2(-Tip[1][2], Tip[2][2])) # roll
+        # Yp_t = np.degrees(np.arctan2(Tip[0][2], np.sqrt(1 - np.pow(Tip[0][2], 2)))) # pitch
+        # Zpp_t = np.degrees(np.arctan2(-Tip[0][1], Tip[0][0])) # yaw
+
+        self.ypr[0] = np.degrees(Zpp_e)
+        self.ypr[1] = np.degrees(Yp_e)
+        self.ypr[2] = np.degrees(Z_e)
+
+
+    def inverse_kinematics_full(self, target_xyz, target_ypr):
+        yaw, pitch, roll = target_ypr
+        x, y, z = target_xyz
+        new_theta = np.zeros(6)
+
+        c1, s1 = np.cos(np.radians(roll)), np.sin(np.radians(roll))
+        c2, s2 = np.cos(np.radians(pitch)), np.sin(np.radians(pitch))
+        c3, s3 = np.cos(np.radians(yaw)), np.sin(np.radians(yaw))
+
+        T = np.array([[c1*c2*c3-s1*s3,  -c3*s1-c1*c2*s3,    c1*s2,  x],
+                      [c1*s3-c2*c3*s1,  c1*c3-c2*s1*s3,     s1*s2,  y],
+                      [-c3*s2,          s2*s3,              c2,     z],
+                      [0,               0,                  0,      1]
+                      ])
+
+        T[np.abs(T) < 1e-12] = 0.0
+
+        d = self.d_val
+        P06 = T[:3, 3]
+        d6 = d[5]
+        P46 = d6 * T[:3, 2]
+        P04 = P06 - P46
+
+        new_theta[0] = np.arctan2(P06[1] - P46[1], P06[0] - P46[0])
+
+        d1 = d[0]
+        a = self.a_val
+        P01 = np.array([a[0] * np.cos(new_theta[0]), a[0] * np.sin(new_theta[0]), d1])
+
+        P14 = P04 - P01
+
+        P14L = np.linalg.norm(P14)
+        l1 = np.sqrt(np.pow(a[2], 2) + np.pow(d[3], 2))
+
+        fi = np.arccos((np.pow(l1, 2) + np.pow(a[1], 2) - np.pow(P14L, 2)) / (2 * l1 * a[1]))
+        dzeta = 0 # np.arctan2(d[3], a[3])
+        new_theta[2] = fi - dzeta - np.pi/2
+
+        beta1 = np.arctan2(P14[2], np.sqrt(np.pow(P14[0], 2) + np.pow(P14[1], 2)))
+        beta2 = np.arccos((np.pow(a[1], 2) + np.pow(P14L, 2) - np.pow(l1, 2)) / (2 * a[1] * P14L))
+
+        new_theta[1] = beta1 + beta2 - np.pi/2
+
+        ct1, st1 = np.cos(new_theta[0]), np.sin(new_theta[0])
+        ct2, st2 = np.cos(new_theta[1]), np.sin(new_theta[1])
+        ct3, st3 = np.cos(new_theta[2]), np.sin(new_theta[2])
+        c12 = ct1*ct2 - st1*st2
+        s12 = ct1*st2 + st1*ct2
+        c23 = ct2 * ct3 - st2 * st3
+        s23 = ct2 * st3 + st2 * ct3
+
+        A14 = np.array([
+            [ct1 * c23,     st1,    ct1 * s23,  ct1 * (a[0] + a[1] * ct2 + a[2] * c23)],
+            [st1 * c23,     -ct1,   st1 * s23,  st1 * (a[0] + a[1] * ct2 + a[2] * c23)],
+            [s23,           0,      -c23,       a[1] * st2 + d[0] + a[2] * s23],
+            [0,             0,      0,          1]
+        ])
+
+        R6z = T[:3, 2]
+        R4z = A14[:3, 2]
+
+        new_theta[4] = np.arccos(R6z @ R4z.T) - np.pi/2
+        new_theta[np.abs(new_theta) < 1e-12] = 0.0
+
+        A16 = T
+        A13 = A14
+        A13_inv = np.linalg.inv(A13)
+        A46 = A13_inv @ A16
+
+        new_theta[3] = np.arctan2(A46[1][3], A46[0][3]) - np.pi
+        new_theta[5] = np.arctan2(A46[2][1], A46[2][0]) - np.pi
+
+        new_theta[new_theta < -np.pi] += 2 * np.pi
+        new_theta = np.round(new_theta, decimals=1)
+
+        self.angles = np.degrees(new_theta)
+        print(np.degrees(new_theta))
+
+
+
 
 
 def main():
