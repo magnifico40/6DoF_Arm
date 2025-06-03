@@ -11,9 +11,6 @@ pamiętaj by interpreter jeszcze wybrać z venv2
 
 """
 
-
-
-
 import time
 import sys
 import numpy as np
@@ -22,7 +19,7 @@ from spatialmath import SE3
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QWidget, QSlider, QLabel, QOpenGLWidget, QPushButton,
-    QSplitter, QDoubleSpinBox, QGroupBox, QMessageBox
+    QSplitter, QDoubleSpinBox, QGroupBox, QMessageBox, QScrollArea
 )
 from PyQt5.QtCore import Qt
 from OpenGL.GL import *
@@ -46,10 +43,11 @@ class RobotArm:
         self.ypr = np.empty(3, dtype=object)
         self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
         self.targetXYZ = [0, 0, 0]
+        self.targetToPickXYZ = [0, 0, 0]
         self.links = [RevoluteDH(d=self.dValues[i], a= self.a_val[i], alpha=self.alpha_val[i], offset=self.theta_increments[i]) for i in range(6)]
         self.robotModel = DHRobot(self.links, name="MyRobot")
     
-    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 100):
+    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 1000):
         return [startingAngles + (endingAngles - startingAngles) * t for t in np.linspace(0, 1, TrajetorySteps)]
     
     def set_target_xyz(self, xyz):
@@ -58,6 +56,14 @@ class RobotArm:
 
     def get_target_xyz(self):
         return self.targetXYZ
+
+    def get_targetToPick_xyz(self):
+        return self.targetToPickXYZ
+    
+    def set_targetToPick_xyz(self, x, y, z):
+        self.targetToPickXYZ[0] = x
+        self.targetToPickXYZ[1] = y
+        self.targetToPickXYZ[2] = z
 
     def set_angle(self, index, value):
         self.angles[index] = value
@@ -140,12 +146,49 @@ class RobotArm:
             print(f" Błąd podczas obliczania IK: {e}")
             return None, False
         
-
 class RobotOpenGLWidget(QOpenGLWidget):
     def __init__(self, robot, parent=None):
         super().__init__(parent)
         self.robot = robot
         self.quadric = None
+        self.show_targetToPick = False 
+
+    def draw_cube(self, center, size):
+        x, y, z = center
+        s = size / 2.0
+
+        vertices = [
+            [x - s, y - s, z - s],
+            [x + s, y - s, z - s],
+            [x + s, y + s, z - s],
+            [x - s, y + s, z - s],
+            [x - s, y - s, z + s],
+            [x + s, y - s, z + s],
+            [x + s, y + s, z + s],
+            [x - s, y + s, z + s]
+        ]
+
+        faces = [
+            [0, 1, 2, 3],  # back
+            [4, 5, 6, 7],  # front
+            [0, 1, 5, 4],  # bottom
+            [2, 3, 7, 6],  # top
+            [1, 2, 6, 5],  # right
+            [0, 3, 7, 4]   # left
+        ]
+
+        glBegin(GL_QUADS)
+        for face in faces:
+            for vertex in face:
+                glVertex3fv(vertices[vertex])
+        glEnd()
+
+    def draw_targetToPick(self, targetToPickXYZ):
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glColor4f(1.0, 0.4, 0.7, 1)
+        self.draw_cube(targetToPickXYZ, size = 0.25)
+
 
     def initializeGL(self):
         glClearColor(1, 1, 1, 1)
@@ -172,6 +215,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
     def paintGL(self):
         angles = self.robot.get_angles()
         segmentLen = self.robot.get_segments_len()
+        targetToPickXYZ = self.robot.get_targetToPick_xyz()
         # theta_table = get_theta_table()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -235,6 +279,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         
         glPushMatrix()
         self.draw_target()
+        if self.show_targetToPick: self.draw_targetToPick(targetToPickXYZ)
         glPopMatrix()
 
     def draw_segment(self, length):
@@ -358,7 +403,8 @@ class RobotOpenGLWidget(QOpenGLWidget):
 
         glBegin(GL_POINTS)
         glVertex3f(xyz[0], xyz[1], xyz[2])
-        glEnd()      
+        glEnd()
+
     def draw_gripper(self):
         def draw_finger():
             base = 0.2
@@ -420,9 +466,6 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
 
         glPopMatrix()
-
-
-
 class MyButton(QPushButton):
     def __init__(self, text=""):
         super().__init__(text)
@@ -647,11 +690,85 @@ class MainWindow(QMainWindow):
 
         control_layout.addStretch()
 
-        splitter.addWidget(control_widget)
+        #target section
+        target_group = QGroupBox("Object to pick")
+        target_group.setStyleSheet("QGroupBox {background-color: #ADD8E6;}")
+        target_layout = QVBoxLayout(target_group)
+        
+        
+        # target coordinates
+        pos_label_targ = QLabel("Position:")
+        pos_label_targ.setStyleSheet("font-weight: bold; font-size: 13px")
+        target_layout.addWidget(pos_label_targ)
+
+        # X coordinate
+        x_layout_targ = QHBoxLayout()
+        x_label_targ = QLabel("X:")
+        x_label_targ.setStyleSheet("font-size: 12px")
+        x_label_targ.setMinimumWidth(20)
+        self.x_spinbox_targ = QDoubleSpinBox()
+        self.x_spinbox_targ.setRange(-10.0, 10.0)
+        self.x_spinbox_targ.setSingleStep(0.1)
+        self.x_spinbox_targ.setDecimals(2)
+        self.x_spinbox_targ.setValue(0.0)
+        x_layout_targ.addWidget(x_label_targ)
+        x_layout_targ.addWidget(self.x_spinbox_targ)
+
+        # Y coordinate
+        y_layout_targ = QHBoxLayout()
+        y_label_targ = QLabel("Y:")
+        y_label_targ.setStyleSheet("font-size: 12px")
+        y_label_targ.setMinimumWidth(20)
+        self.y_spinbox_targ = QDoubleSpinBox()
+        self.y_spinbox_targ.setRange(-10.0, 10.0)
+        self.y_spinbox_targ.setSingleStep(0.1)
+        self.y_spinbox_targ.setDecimals(2)
+        self.y_spinbox_targ.setValue(0.0)
+        y_layout_targ.addWidget(y_label_targ)
+        y_layout_targ.addWidget(self.y_spinbox_targ)
+
+        # Z coordinate
+        z_layout_targ = QHBoxLayout()
+        z_label_targ = QLabel("Z:")
+        z_label_targ.setStyleSheet("font-size: 12px")
+        z_label_targ.setMinimumWidth(20)
+        self.z_spinbox_targ = QDoubleSpinBox()
+        self.z_spinbox_targ.setRange(-10.0, 10.0)
+        self.z_spinbox_targ.setSingleStep(0.1)
+        self.z_spinbox_targ.setDecimals(2)
+        self.z_spinbox_targ.setValue(0.0)
+        z_layout_targ.addWidget(z_label_targ)
+        z_layout_targ.addWidget(self.z_spinbox_targ)
+        
+        self.draw_target_btn = QPushButton("Draw Target")
+        self.draw_target_btn.setCheckable(True)
+        self.draw_target_btn.clicked.connect(self.targetToPick_handling) #referencja do funckji, bez naw - nie jest wykonywana natychmist
+
+        target_layout.addLayout(x_layout_targ)
+        target_layout.addSpacing(5)
+        target_layout.addLayout(y_layout_targ)
+        target_layout.addSpacing(5)
+        target_layout.addLayout(z_layout_targ)
+        target_layout.addSpacing(5)
+        target_layout.addWidget(self.draw_target_btn)
+
+        control_layout.addWidget(target_group)
+
+        # scroll_area z pionowym suwakiem
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(control_widget)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Dodaj tylko scroll_area i OpenGL widget do splitter
+        splitter.addWidget(scroll_area)
         splitter.addWidget(self.opengl_widget)
-        splitter.setSizes([300, 900])
+
+        splitter.setSizes([300, 700])
         splitter.setCollapsible(0, False)
         splitter.setCollapsible(1, False)
+
 
         self.opengl_widget.setMinimumWidth(300)
         control_widget.setMinimumWidth(300)
@@ -677,6 +794,20 @@ class MainWindow(QMainWindow):
     def reset_all_joints(self):
         for slider in self.sliders:
             slider.setValue(0)
+
+    def targetToPick_handling(self):
+        if self.draw_target_btn.isChecked():
+            targetToPick_x = self.x_spinbox_targ.value()
+            targetToPick_y = self.y_spinbox_targ.value()
+            targetToPick_z = self.z_spinbox_targ.value()
+
+            targetToPickXYZ = [targetToPick_x, targetToPick_y, targetToPick_z]
+            self.robot.set_targetToPick_xyz(targetToPick_x, targetToPick_y, targetToPick_z)
+            self.opengl_widget.show_targetToPick = True
+        else:
+            self.opengl_widget.show_targetToPick = False
+
+        self.opengl_widget.update()
 
     def apply_inverse_kinematics(self):
         # Get target coordinates
@@ -715,6 +846,8 @@ class MainWindow(QMainWindow):
             #print("Inverse Kinematics Impossible")
             QMessageBox.warning(self, "Inverse Kinematics", "Nie udało się znaleźć rozwiązania IK.")
 
+
+       
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
