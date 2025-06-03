@@ -19,9 +19,9 @@ from spatialmath import SE3
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QWidget, QSlider, QLabel, QOpenGLWidget, QPushButton,
-    QSplitter, QDoubleSpinBox, QGroupBox, QMessageBox, QScrollArea
+    QSplitter, QDoubleSpinBox, QGroupBox, QMessageBox, QScrollArea, 
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import (Qt, QPropertyAnimation, pyqtSlot)
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -47,7 +47,7 @@ class RobotArm:
         self.links = [RevoluteDH(d=self.dValues[i], a= self.a_val[i], alpha=self.alpha_val[i], offset=self.theta_increments[i]) for i in range(6)]
         self.robotModel = DHRobot(self.links, name="MyRobot")
     
-    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 1000):
+    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 100):
         return [startingAngles + (endingAngles - startingAngles) * t for t in np.linspace(0, 1, TrajetorySteps)]
     
     def set_target_xyz(self, xyz):
@@ -519,6 +519,7 @@ class MainWindow(QMainWindow):
         self.opengl_widget = RobotOpenGLWidget(self.robot)
         self.sliders = []
         self.labels = []
+        self.animations = []
 
         splitter = QSplitter(Qt.Horizontal)
         main_widget = splitter  
@@ -793,7 +794,12 @@ class MainWindow(QMainWindow):
 
     def reset_all_joints(self):
         for slider in self.sliders:
-            slider.setValue(0)
+            animation = QPropertyAnimation(slider, b"value")
+            animation.setDuration(500)  # Czas trwania animacji w milisekundach (np. 0.5 sekundy)
+            animation.setStartValue(slider.value())
+            animation.setEndValue(0)
+            animation.start()
+            self.animations.append(animation)
 
     def targetToPick_handling(self):
         if self.draw_target_btn.isChecked():
