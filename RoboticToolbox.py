@@ -26,132 +26,16 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-
-class RobotArm:
-    def __init__(self):
-        self.angles = np.zeros(6)
-        self.segmentLen = np.array([0.5, 1, 0.5, 0.25])
-        self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
-        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
-        self.dValues = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
-        self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
-        self.theta_increments = np.radians([-90, -90, 0, 0, 0, 0])
-        self.theta_val = np.radians(self.angles) + self.theta_increments
-        self.T = np.empty(6, dtype=object)
-        self.J = np.empty(6, dtype=object)
-        self.Jxyz = np.empty(6, dtype=object)
-        self.ypr = np.empty(3, dtype=object)
-        self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
-        self.targetXYZ = [0, 0, 0]
-        self.targetToPickXYZ = [0, 0, 0]
-        self.links = [RevoluteDH(d=self.dValues[i], a= self.a_val[i], alpha=self.alpha_val[i], offset=self.theta_increments[i]) for i in range(6)]
-        self.robotModel = DHRobot(self.links, name="MyRobot")
-    
-    def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 100):
-        return [startingAngles + (endingAngles - startingAngles) * t for t in np.linspace(0, 1, TrajetorySteps)]
-    
-    def set_target_xyz(self, xyz):
-        for i in range(3):
-            self.targetXYZ[i] = xyz[i]
-
-    def get_target_xyz(self):
-        return self.targetXYZ
-
-    def get_targetToPick_xyz(self):
-        return self.targetToPickXYZ
-    
-    def set_targetToPick_xyz(self, x, y, z):
-        self.targetToPickXYZ[0] = x
-        self.targetToPickXYZ[1] = y
-        self.targetToPickXYZ[2] = z
-
-    def set_angle(self, index, value):
-        self.angles[index] = value
-
-    def get_angles(self):
-        return self.angles
-
-    def get_segments_len(self):
-        return self.segmentLen
-
-    def get_joints_limits(self):
-        return self.JointLimits
-
-    def get_gripper_xyz_ypr(self):
-        Jxyz, ypr = self.get_joints_xyz_ypr()
-        return Jxyz[5][0], Jxyz[5][1], Jxyz[5][2], ypr[0], ypr[1], ypr[2]
-
-    def get_joints_xyz_ypr(self):
-        self._dh_matrix()
-        self._joints_xyz()
-        return self.Jxyz, self.ypr
-
-    def _dh_matrix(self):
-        # notation same as in yt vid
-        self.theta_val = np.radians(self.angles) + self.theta_increments
-        for i in range(6):
-            ct, st = np.cos(self.theta_val[i]), np.sin(self.theta_val[i])
-            ca, sa = np.cos(self.alpha_val[i]), np.sin(self.alpha_val[i])
-
-            self.T[i] = np.array([
-                [ct, -st * ca, st * sa, self.a_val[i] * ct],
-                [st, ct * ca, -ct * sa, self.a_val[i] * st],
-                [0, sa, ca, self.d_val[i]],
-                [0, 0, 0, 1]
-            ])
-
-            self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
-
-    def _joints_xyz(self):
-        for i in range(6):
-            if i != 0:
-                self.J[i] = self.J[i-1] @ self.T[i]
-            else:
-                self.J[i] = self.T[i]
-            self.Jxyz[i] = self.J[i][:3, 3]
-
-        R = self.J[5][:3, :3]
-        self.ypr[2] = np.degrees(np.arcsin(R[2, 1]))
-
-        # Handle potential gimbal lock
-        if abs(R[2, 1]) < 0.99999:
-            # Yaw (Z-axis rotation)
-            self.ypr[0] = np.degrees(np.arctan2(-R[0, 1], R[1, 1]))
-            # Pitch (Y-axis rotation)
-            self.ypr[1] = np.degrees(np.arctan2(-R[2, 0], R[2, 2]))
-        else:
-            # Gimbal lock: approximate yaw and pitch
-            self.ypr[0] = np.degrees(np.arctan2(R[1, 0], R[0, 0]))
-            self.ypr[1] = 0  # set pitch to zero or leave as-is
-
-    def reset_angles(self):
-        self.angles = np.zeros(6)
-        self.theta_val = np.radians(self.angles) + self.theta_increments
-        self.T = np.empty(6, dtype=object)
-        self.J = np.empty(6, dtype=object)
-        self.Jxyz = np.empty(6, dtype=object)
-        self.ypr = np.empty(3, dtype=object)
-
-    def inverse_kinematics(self, xyz, ypr, initial_angles):
-        #xyz, ypr - arrays
-        try:
-            TargetMatrix = SE3(xyz) * SE3.RPY(ypr, unit='deg')
-            solution = self.robotModel.ikine_LM(TargetMatrix, q0 = initial_angles) # result in radians
-            if solution.success:
-                return solution.q, solution.success
-            else:
-                print("Nie znaleziono rozwiązania.")
-                return None, False
-        except Exception as e:
-            print(f" Błąd podczas obliczania IK: {e}")
-            return None, False
-        
+from RobotArm import RobotArm
+   
 class RobotOpenGLWidget(QOpenGLWidget):
     def __init__(self, robot, parent=None):
         super().__init__(parent)
         self.robot = robot
+        
         self.quadric = None
         self.show_targetToPick = False 
+        self.pickTarget = False 
 
     def draw_cube(self, center, size):
         x, y, z = center
@@ -216,7 +100,6 @@ class RobotOpenGLWidget(QOpenGLWidget):
         angles = self.robot.get_angles()
         segmentLen = self.robot.get_segments_len()
         targetToPickXYZ = self.robot.get_targetToPick_xyz()
-        # theta_table = get_theta_table()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
@@ -275,11 +158,24 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
 
         self.draw_gripper()
+
+        #glTranslatef(0.0, 0.0, 0.4)
+        #self.draw_targetToPick(targetToPickXYZ)
+
+        if self.pickTarget == True and self.show_targetToPick == True: 
+            glTranslatef(0.0, 0.0, 0.0)
+            self.draw_targetToPick([0, 0, 0]) #wspolrzedne wzgledem grippera
+            
         glPopMatrix()
         
         glPushMatrix()
-        self.draw_target()
-        if self.show_targetToPick: self.draw_targetToPick(targetToPickXYZ)
+        if self.pickTarget == False and self.show_targetToPick == True:
+           glTranslatef(targetToPickXYZ[0], targetToPickXYZ[1], targetToPickXYZ[2])
+           self.draw_targetToPick(targetToPickXYZ)
+            
+        self.draw_target() 
+        
+
         glPopMatrix()
 
     def draw_segment(self, length):
@@ -741,9 +637,14 @@ class MainWindow(QMainWindow):
         z_layout_targ.addWidget(z_label_targ)
         z_layout_targ.addWidget(self.z_spinbox_targ)
         
-        self.draw_target_btn = QPushButton("Draw Target")
+        self.draw_target_btn = MyButton("Draw Target")
         self.draw_target_btn.setCheckable(True)
-        self.draw_target_btn.clicked.connect(self.targetToPick_handling) #referencja do funckji, bez naw - nie jest wykonywana natychmist
+        self.draw_target_btn.clicked.connect(self.draw_targetToPick) #referencja do funckji, bez naw - nie jest wykonywana natychmist
+
+        self.PickTarget_btn = MyButton("Pick Target")
+        self.PickTarget_btn.setCheckable(True)
+        self.PickTarget_btn.clicked.connect(self.PickTarget)
+
 
         target_layout.addLayout(x_layout_targ)
         target_layout.addSpacing(5)
@@ -752,6 +653,8 @@ class MainWindow(QMainWindow):
         target_layout.addLayout(z_layout_targ)
         target_layout.addSpacing(5)
         target_layout.addWidget(self.draw_target_btn)
+        target_layout.addSpacing(5)
+        target_layout.addWidget(self.PickTarget_btn)
 
         control_layout.addWidget(target_group)
 
@@ -800,20 +703,57 @@ class MainWindow(QMainWindow):
             animation.setEndValue(0)
             animation.start()
             self.animations.append(animation)
+    
+    def PickTarget(self):
+        
+        if self.PickTarget_btn.isChecked():
+            self.opengl_widget.pickTarget = True
 
-    def targetToPick_handling(self):
+            targetToPick_x = self.x_spinbox_targ.value()
+            targetToPick_y = self.y_spinbox_targ.value()
+            targetToPick_z = self.z_spinbox_targ.value()
+            targetToPickXYZ = [targetToPick_x, targetToPick_y, targetToPick_z]
+
+            initial_angles = self.robot.get_angles()
+            yaw = np.degrees(np.arctan2(targetToPick_y, targetToPick_x))
+
+            rpy = [0, 90, yaw]
+            Targetangles, success = self.robot.inverse_kinematics(targetToPickXYZ, rpy, initial_angles)
+            if success:
+                print("sukces")
+                self.move_pointToPoint(Targetangles, initial_angles)
+            else: QMessageBox.warning(self, "Inverse Kinematics", "Cel poza zasięgiem.")
+        else:  self.opengl_widget.pickTarget = False
+        self.opengl_widget.update()
+
+    def draw_targetToPick(self):
         if self.draw_target_btn.isChecked():
             targetToPick_x = self.x_spinbox_targ.value()
             targetToPick_y = self.y_spinbox_targ.value()
             targetToPick_z = self.z_spinbox_targ.value()
-
             targetToPickXYZ = [targetToPick_x, targetToPick_y, targetToPick_z]
+
+            
             self.robot.set_targetToPick_xyz(targetToPick_x, targetToPick_y, targetToPick_z)
             self.opengl_widget.show_targetToPick = True
         else:
             self.opengl_widget.show_targetToPick = False
 
         self.opengl_widget.update()
+
+    def move_pointToPoint(self, endingAngles, initialAngles):
+        angles_deg = np.degrees(endingAngles)
+        angles_deg_int = np.rint(angles_deg).astype(int)
+        print(angles_deg)
+        trajectory = self.robot.joint_trajectory(initialAngles, angles_deg)
+        for q in trajectory:
+            transitional_angles = q
+            transitional_angles_int = np.rint(transitional_angles).astype(int)
+            for i in range(6):
+                self.sliders[i].setValue(transitional_angles_int[i])
+                self.robot.set_angle(i, transitional_angles[i])
+            time.sleep(0.001)    
+            QApplication.processEvents()    #odswierzenie GUI
 
     def apply_inverse_kinematics(self):
         # Get target coordinates
@@ -836,18 +776,7 @@ class MainWindow(QMainWindow):
         angles, success = self.robot.inverse_kinematics(xyz, rpy, initial_angles)
 
         if success:
-            angles_deg = np.degrees(angles)
-            angles_deg_int = np.rint(angles_deg).astype(int)
-            print(angles_deg)
-            trajectory = self.robot.joint_trajectory(initial_angles, angles_deg)
-            for q in trajectory:
-                transitional_angles = q
-                transitional_angles_int = np.rint(transitional_angles).astype(int)
-                for i in range(6):
-                    self.sliders[i].setValue(transitional_angles_int[i])
-                    self.robot.set_angle(i, transitional_angles[i])
-                time.sleep(0.001)    
-                QApplication.processEvents()    #odswierzenie GUI
+            self.move_pointToPoint(angles, initial_angles)
         else:
             #print("Inverse Kinematics Impossible")
             QMessageBox.warning(self, "Inverse Kinematics", "Nie udało się znaleźć rozwiązania IK.")
