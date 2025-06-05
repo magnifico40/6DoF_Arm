@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
-from second import RobotArm
+from newSecond import RobotArm
 
 
 class RobotOpenGLWidget(QOpenGLWidget):
