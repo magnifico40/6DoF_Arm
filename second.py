@@ -433,9 +433,9 @@ class RobotArm:
         new_theta[2] = np.pi - fi
 
         beta1 = np.arctan2(P14[2], np.sqrt(np.pow(P14[0], 2) + np.pow(P14[1], 2)))
-        beta2 = np.arccos((np.pow(a[1], 2) + np.pow(P14L, 2) - np.pow(d[3], 2)) / (2 * a[1] * P14L))
+        beta2 = np.arccos((np.pow(a[1], 2) - np.pow(P14L, 2) - np.pow(d[3], 2)) / (2 * a[1] * P14L))
 
-        new_theta[1] = beta1 + beta2 - np.pi/2
+        new_theta[1] = beta1 + beta2 - np.pi
 
         ct1, st1 = np.cos(new_theta[0]), np.sin(new_theta[0])
         ct2, st2 = np.cos(new_theta[1]), np.sin(new_theta[1])
