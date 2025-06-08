@@ -58,15 +58,6 @@ class RobotArm:
             ])
 
             self.T[i][np.abs(self.T[i]) < 1e-12] = 0.0
-
-    def return16(self):
-        for i in range(6):
-            if i != 0:
-                self.J[i] = self.J[i-1] @ self.T[i]
-            else:
-                self.J[i] = self.T[i]
-
-        return self.J[5]
     
     def _joints_xyz(self):
         for i in range(6):
@@ -132,7 +123,15 @@ class RobotArm:
             self.ypr[0] = np.degrees(np.arctan2(R[1, 0], R[0, 0]))
             self.ypr[1] = 0  # set pitch to zero or leave as-is
 
-
+    def dhMat(self, theta, d, a, alpha):
+        ct, st = np.cos(theta), np.sin(theta)
+        ca, sa = np.cos(alpha), np.sin(alpha)
+        return np.array([
+            [ct, -st * ca,  st * sa, a * ct],
+            [st,  ct * ca, -ct * sa, a * st],
+            [0,       sa,      ca,      d],
+            [0,        0,       0,      1]
+            ])
     def inverse_kinematics_full(self, target_xyz, target_ypr):
         yaw, pitch, roll = target_ypr
         x, y, z = target_xyz
@@ -146,14 +145,15 @@ class RobotArm:
         c1, s1 = np.cos(alpha), np.sin(alpha)
         c2, s2 = np.cos(beta), np.sin(beta)
         c3, s3 = np.cos(gamma), np.sin(gamma)
-
+        d = self.d_val
+        a = self.a_val
+        
         T = np.array([[c1*c2*c3-s1*s3,  -c3*s1-c1*c2*s3,    c1*s2,  x],
                       [c1*s3-c2*c3*s1,  c1*c3-c2*s1*s3,     s1*s2,  y],
                       [-c3*s2,          s2*s3,              c2,     z],
                       [0,               0,                  0,      1]
                       ])
 
-        d = self.d_val
         P06 = T[:3, 3]
         d6 = d[5]
         P46 = d6 * T[:3, 2]
@@ -163,7 +163,7 @@ class RobotArm:
         new_theta[0] = np.arctan2(P04[1], P04[0])
 
         d1 = d[0]
-        a = self.a_val
+        
         P01 = np.array([a[0] * np.cos(new_theta[0]), a[0] * np.sin(new_theta[0]), d1])
 
         P14 = P04 - P01
@@ -175,7 +175,7 @@ class RobotArm:
         cos_fi = np.clip(cos_fi, -1.0, 1.0)
         fi = np.arccos(cos_fi)
         zeta = np.arctan2(d[3], a[2])
-        new_theta[2] = fi - zeta - 2 * np.pi
+        new_theta[2] = fi - zeta #- np.pi
 
         #beta1 from -1 to 1 (arccos)
         beta1 = np.arctan2(P14[2], np.sqrt(np.pow(P14[0], 2) + np.pow(P14[1], 2)))
@@ -194,36 +194,29 @@ class RobotArm:
         c23 = ct2 * ct3 - st2 * st3
         s23 = ct2 * st3 + st2 * ct3
 
-        A14 = np.array([
-            [ct1 * c23,     st1,    ct1 * s23,  ct1 * (a[0] + a[1] * ct2 + a[2] * c23)],
-            [st1 * c23,     -ct1,   st1 * s23,  st1 * (a[0] + a[1] * ct2 + a[2] * c23)],
-            [s23,           0,      -c23,       a[1] * st2 + d[0] + a[2] * s23],
-            [0,             0,      0,          1]
-        ])
+        #A14 = self.dhMat(new_theta[0], d[0], a[0], self.alpha_val[0]) @  self.dhMat(new_theta[1], d[1], a[1], self.alpha_val[1]) @ self.dhMat(new_theta[2], d[2], a[2], self.alpha_val[2]) @ self.dhMat(new_theta[3], d[3], a[3], self.alpha_val[3])
+        A14 = self.dhMat(new_theta[0], d[0], a[0], self.alpha_val[0]) @  self.dhMat(new_theta[1], d[1], a[1], self.alpha_val[1]) @ self.dhMat(new_theta[2], d[2], a[2], self.alpha_val[2])
+        A13 = A14
 
         R6z = T[:3, 2]
-        R4z = A14[:3, 2]
+        R3z = A13[:3, 2]
 
-        new_theta[4] = np.arccos(R6z @ R4z.T) - np.pi/2 
-        new_theta[np.abs(new_theta) < 1e-12] = 0.0
+        #Theta5--------------------------------------------------------------------------------
+        new_theta[4] = np.arccos(R6z @ R3z.T) - np.pi/2
 
         A16 = T
-        A13 = A14
+        
         A13_inv = np.linalg.inv(A13)
         A46 = A13_inv @ A16
 
-        #almost
-        #new_theta[3] = np.arctan2(A46[1, 2], A46[0, 2])
-        #new_theta[5] = np.arctan2(A46[2, 1], A46[2, 0])
-
-        #almost
+        #Theta4, Theta6--------------------------------------------------------------------------------
         new_theta[3] = np.arctan2(A46[1][3], A46[0][3]) #-pi
         new_theta[5] = np.arctan2(A46[2][1], A46[2][0]) #-pi
 
         new_theta[new_theta < -np.pi] += 2 * np.pi
+        new_theta[new_theta > np.pi] -= 2 * np.pi
     
         new_theta = np.degrees(new_theta)
-        #new_theta = (new_theta + 180) % 360 - 180  # zakres [-180, 180]
         self.angles = new_theta
 
 

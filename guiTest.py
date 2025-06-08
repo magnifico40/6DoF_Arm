@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
-from newSecond import RobotArm
+from RobotArm import RobotArm
 
 
 class RobotOpenGLWidget(QOpenGLWidget):
@@ -492,22 +492,23 @@ class MainWindow(QMainWindow):
             slider.setValue(0)
 
     def apply_inverse_kinematics(self):
-        # Get target coordinates
         target_x = self.x_spinbox.value()
         target_y = self.y_spinbox.value()
         target_z = self.z_spinbox.value()
-
-        # Get target orientation
         target_roll = self.roll_spinbox.value()
         target_pitch = self.pitch_spinbox.value()
         target_yaw = self.yaw_spinbox.value()
 
-        self.robot.inverse_kinematics_full([target_x, target_y, target_z], [target_yaw, target_pitch, target_roll])
+        test_angles = [0, 45, -30, 0, 90, 0]
+        result = self.robot.kinematics(test_angles)
+        x, y, z, yaw, pitch, roll = self.robot.get_gripper_xyz_ypr()
+
+        angles = self.robot.inverse_kinematics_full([target_x, target_y, target_z], [target_yaw, target_pitch, target_roll])
         self.opengl_widget.update()
-        angles = self.robot.get_angles()
         for i in range(6):
             try:
                 self.sliders[i].setValue(int(angles[i]))
+                self.robot.set_angle(i, angles[i])
             except:
                 print("cant achieve position")
 
