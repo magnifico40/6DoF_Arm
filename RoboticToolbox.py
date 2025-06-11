@@ -36,10 +36,13 @@ class RobotOpenGLWidget(QOpenGLWidget):
         self.quadric = None
         self.show_targetToPick = False 
         self.pickTarget = False 
+        self.targetPicked = False
 
     def draw_cube(self, center, size):
+        center[0] = center[0]/2
+        center[1] = center[1]/2
         x, y, z = center
-        s = size / 2.0
+        s = size
 
         vertices = [
             [x - s, y - s, z - s],
@@ -61,6 +64,16 @@ class RobotOpenGLWidget(QOpenGLWidget):
             [0, 3, 7, 4]   # left
         ]
 
+        glPointSize(10)
+
+        # Rysuj punkt w środku sześcianu
+        glColor3f(0, 1, 0)  # zielony
+        glBegin(GL_POINTS)
+        glVertex3f(x, y, z)
+        glEnd()
+
+        # Rysuj ściany sześcianu
+        glColor4f(1.0, 0.4, 0.7, 1)  # różowy sześcian
         glBegin(GL_QUADS)
         for face in faces:
             for vertex in face:
@@ -71,7 +84,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glColor4f(1.0, 0.4, 0.7, 1)
-        self.draw_cube(targetToPickXYZ, size = 0.25)
+        self.draw_cube(targetToPickXYZ, size = 0.1)
 
 
     def initializeGL(self):
@@ -162,7 +175,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         #glTranslatef(0.0, 0.0, 0.4)
         #self.draw_targetToPick(targetToPickXYZ)
 
-        if self.pickTarget == True and self.show_targetToPick == True: 
+        if self.pickTarget == True and self.show_targetToPick == True and self.targetPicked == True: 
             glTranslatef(0.0, 0.0, 0.0)
             self.draw_targetToPick([0, 0, 0]) #wspolrzedne wzgledem grippera
             
@@ -170,10 +183,10 @@ class RobotOpenGLWidget(QOpenGLWidget):
         
         glPushMatrix()
         if self.pickTarget == False and self.show_targetToPick == True:
-           glTranslatef(targetToPickXYZ[0], targetToPickXYZ[1], targetToPickXYZ[2])
-           self.draw_targetToPick(targetToPickXYZ)
+           glTranslatef(targetToPickXYZ[0]/2, targetToPickXYZ[1]/2, targetToPickXYZ[2])
+           self.draw_targetToPick(targetToPickXYZ) #wspolrzedne wzgledem globalnego ukl. wsp.
             
-        self.draw_target() 
+        #self.draw_target() 
         
 
         glPopMatrix()
@@ -211,10 +224,11 @@ class RobotOpenGLWidget(QOpenGLWidget):
     def draw_grid(self):
         glDisable(GL_LIGHTING)
         grid_size = 25
-        spacing = 0.4
+        spacing = 0.5
         arrow_size = 0.3
         arrow_pos = 5 * spacing 
-
+        h = 0.01    #Z offset
+        
         glPushMatrix()
 
         # Szara siatka
@@ -223,18 +237,18 @@ class RobotOpenGLWidget(QOpenGLWidget):
         for i in range(-grid_size, grid_size + 1):
             if i != 0:
                 glBegin(GL_LINES)
-                glVertex3f(i * spacing, -grid_size * spacing, 0)
-                glVertex3f(i * spacing, grid_size * spacing, 0)
+                glVertex3f(i * spacing, -grid_size * spacing, h)
+                glVertex3f(i * spacing, grid_size * spacing, h)
                 glEnd()
 
                 glBegin(GL_LINES)
-                glVertex3f(-grid_size * spacing, i * spacing, 0)
-                glVertex3f(grid_size * spacing, i * spacing, 0)
+                glVertex3f(-grid_size * spacing, i * spacing, h)
+                glVertex3f(grid_size * spacing, i * spacing, h)
                 glEnd()
 
         glLineWidth(3.0)
 
-        h = 0.001    #Z offset
+       
 
         # Oś Y (niebieska)
         glColor3f(0.0, 0.0, 1.0)
@@ -302,66 +316,41 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glEnd()
 
     def draw_gripper(self):
-        def draw_finger():
-            base = 0.2
-            height = 1.0
-
-            glBegin(GL_TRIANGLES)
-            apex = (0.0, 0.0, height)
-            base_pts = [
-                (-base/2, -base/2, 0.0),
-                ( base/2, -base/2, 0.0),
-                ( base/2,  base/2, 0.0),
-                (-base/2,  base/2, 0.0)
-            ]
-            for i in range(4):
-                p1 = base_pts[i]
-                p2 = base_pts[(i+1) % 4]
-                glVertex3f(*p1)
-                glVertex3f(*p2)
-                glVertex3f(*apex)
-            glEnd()
-
-            glBegin(GL_QUADS)
-            for pt in base_pts:
-                glVertex3f(*pt)
-            glEnd()
-
         glPushMatrix()
 
         finger_length = 0.3
         finger_width = 0.3
         spacing = 0.06  # odstęp od środka
-        angle = 30      # kąt nachylenia palców do środka (stopnie)
 
-        glColor3f(0.1, 0.1, 0.1)
+        glColor3f(0.0, 0.0, 0.0)
 
-        # Lewy palec - obrót w kierunku środka (+angle)
+        # Lewy palec
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
         glTranslatef(-spacing, -spacing/2, 0.0)
-        glRotatef(angle, 0.0, 0.0, 1.0)  # obrót wokół osi Z
         glScalef(finger_width, finger_width, finger_length)
-        draw_finger()
+        self.draw_segment(1)
         glPopMatrix()
 
-        # Prawy palec - obrót w kierunku środka (-angle)
+        # Prawy palec
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
         glTranslatef(spacing, -spacing/2, 0.0)
-        glRotatef(-angle, 0.0, 0.0, 1.0) # obrót wokół osi Z
         glScalef(finger_width, finger_width, finger_length)
-        draw_finger()
+        self.draw_segment(1)
         glPopMatrix()
 
-        # Górny palec (nad środkiem) bez zmiany lub ew. lekki obrót
+        # Górny palec (nad środkiem)
         glPushMatrix()
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0, 0.55, 0, 1.0])
         glTranslatef(0.0, spacing, 0.0)
-        glRotatef(90, 0.0, 0.0, 1.0)  # pionowo
-        # jeśli chcesz, możesz dodać też obrót, np. glRotatef(5, 1, 0, 0)
+        glRotatef(90, 0.0, 0.0, 1.0)  # obrót o 90° żeby palec był pionowy
         glScalef(finger_width, finger_width, finger_length)
-        draw_finger()
+        self.draw_segment(1)
         glPopMatrix()
 
         glPopMatrix()
+
 class MyButton(QPushButton):
     def __init__(self, text=""):
         super().__init__(text)
@@ -705,7 +694,7 @@ class MainWindow(QMainWindow):
             self.animations.append(animation)
     
     def PickTarget(self):
-        
+        self.opengl_widget.targetPicked = False
         if self.PickTarget_btn.isChecked():
             self.opengl_widget.pickTarget = True
 
@@ -722,6 +711,7 @@ class MainWindow(QMainWindow):
             if success:
                 print("sukces")
                 self.move_pointToPoint(Targetangles, initial_angles)
+                self.opengl_widget.targetPicked = True
             else: QMessageBox.warning(self, "Inverse Kinematics", "Cel poza zasięgiem.")
         else:  self.opengl_widget.pickTarget = False
         self.opengl_widget.update()
@@ -754,6 +744,7 @@ class MainWindow(QMainWindow):
                 self.robot.set_angle(i, transitional_angles[i])
             time.sleep(0.001)    
             QApplication.processEvents()    #odswierzenie GUI
+        
 
     def apply_inverse_kinematics(self):
         # Get target coordinates
