@@ -10,6 +10,8 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from RobotArm import RobotArm
+import pywavefront
+import pywavefront.visualization
 
 
 class RobotOpenGLWidget(QOpenGLWidget):
@@ -17,6 +19,14 @@ class RobotOpenGLWidget(QOpenGLWidget):
         super().__init__(parent)
         self.robot = robot
         self.quadric = None
+        self.segment_models = [
+            pywavefront.Wavefront('Modele3D/J1.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J2.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J3.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J4.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J5.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J6.obj', collect_faces=True)
+        ]
 
     def initializeGL(self):
         glClearColor(1, 1, 1, 1)
@@ -65,7 +75,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glEnd()
 
         # (opcjonalnie) Włącz z powrotem oświetlenie
-        glEnable(GL_LIGHTING)
+
 
         self.draw_grid()
 
@@ -74,65 +84,55 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glTranslatef(0.0, 0.0, segmentLen[0] / 2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
         glRotatef(angles[0], 0, 0, 1)
-        self.draw_segment(segmentLen[0])
+        self.draw_segment(0)
         glTranslatef(0.0, 0.0, segmentLen[0] / 2)
 
         # Ramię górne
-        glRotatef(angles[1], 1, 0, 0)
+
+
         glTranslatef(0.0, 0.0, segmentLen[1] / 2)
+        glRotatef(angles[1], 1, 0, 0)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
-        self.draw_segment(segmentLen[1])
+        self.draw_segment(1)
         glTranslatef(0.0, 0.0, segmentLen[1] / 2)
 
         # nadgarstek
-        glRotatef(angles[2], 1, 0, 0)
-        glRotatef(-90, 1, 0, 0)
-        glRotatef(angles[3], 0, 0, 1)  # roll
-        glTranslatef(0.0, 0.0, segmentLen[2] / 2)
+
+        glTranslatef(0.15, 0, 0.5)
+        glRotatef(angles[2], 1, 0, 0)  # roll
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
-        self.draw_segment(segmentLen[2])
-        glTranslatef(0.0, 0.0, segmentLen[2] / 2)
+        self.draw_segment(2)
+
+        glRotatef(angles[3], 0, 1, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
+        self.draw_segment(3)
+        glTranslatef(-0.15, -segmentLen[2], 0)
 
         glRotatef(angles[4], 1, 0, 0)
-        glRotatef(angles[5], 0, 0, 1)
-        glTranslatef(0.0, 0.0, segmentLen[3] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
-        self.draw_segment(segmentLen[3])
-        glTranslatef(0.0, 0.0, segmentLen[3] / 2)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.3, 0.6, 1.0])
+        self.draw_segment(4)
 
+        glRotatef(angles[5], 0, 1, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.5, 0, 0, 1.0])
+        self.draw_segment(5)
 
-        self.draw_gripper()
+        #self.draw_gripper()
         glPopMatrix()
+        glEnable(GL_LIGHTING)
 
-    def draw_segment(self, length):
+    def draw_segment(self, index):
         glPushMatrix()
-        radius = 0.1
-        slices = 20
-        stacks = 20
-
-        glTranslatef(0, 0, -length / 2.0)
-        glRotatef(-90, 0, 0, 1)  # walec wzdłuż osi Y
-
-        # Rysujemy walec wzdłuż osi Z
-        # Dolna półkula
-        glPushMatrix()
-        glTranslatef(0, 0, 0)
-        gluSphere(self.quadric, radius, slices, stacks)
+        self.draw_model(self.segment_models[index])
         glPopMatrix()
 
-        # Walec
-        glPushMatrix()
-        glTranslatef(0, 0, 0)
-        gluCylinder(self.quadric, radius, radius, length, slices, 1)
-        glPopMatrix()
-
-        # Górna półkula
-        glPushMatrix()
-        glTranslatef(0, 0, length)
-        gluSphere(self.quadric, radius, slices, stacks)
-        glPopMatrix()
-
-        glPopMatrix()
+    def draw_model(self, model):
+        for mesh in model.mesh_list:
+            glBegin(GL_TRIANGLES)
+            for face in mesh.faces:
+                for vertex_i in face:
+                    vertex = model.vertices[vertex_i]
+                    glVertex3f(*vertex)
+            glEnd()
 
     def draw_grid(self):
         glDisable(GL_LIGHTING)
