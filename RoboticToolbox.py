@@ -38,21 +38,26 @@ class RobotOpenGLWidget(QOpenGLWidget):
         self.pickTarget = False 
         self.targetPicked = False
 
-    def draw_cube(self, center, size):
+    def draw_targetToPick(self, targetToPickXYZ):
+        # Wyłącz oświetlenie na czas rysowania targetu
+        glDisable(GL_LIGHTING)
+        
+        # Przygotuj współrzędne
+        center = targetToPickXYZ.copy()  # Kopiuj żeby nie modyfikować oryginału
         center[0] = center[0]/2
         center[1] = center[1]/2
         x, y, z = center
-        s = size
+        size = 0.1
 
         vertices = [
-            [x - s, y - s, z - s],
-            [x + s, y - s, z - s],
-            [x + s, y + s, z - s],
-            [x - s, y + s, z - s],
-            [x - s, y - s, z + s],
-            [x + s, y - s, z + s],
-            [x + s, y + s, z + s],
-            [x - s, y + s, z + s]
+            [x - size, y - size, z - size],
+            [x + size, y - size, z - size],
+            [x + size, y + size, z - size],
+            [x - size, y + size, z - size],
+            [x - size, y - size, z + size],
+            [x + size, y - size, z + size],
+            [x + size, y + size, z + size],
+            [x - size, y + size, z + size]
         ]
 
         faces = [
@@ -64,28 +69,34 @@ class RobotOpenGLWidget(QOpenGLWidget):
             [0, 3, 7, 4]   # left
         ]
 
-        glPointSize(10)
-
         # Rysuj punkt w środku sześcianu
-        glColor3f(0, 1, 0)  # zielony
+        glPointSize(10)
+        glColor3f(0.0, 1.0, 0.0)  # zielony punkt
         glBegin(GL_POINTS)
         glVertex3f(x, y, z)
         glEnd()
 
         # Rysuj ściany sześcianu
-        glColor4f(1.0, 0.4, 0.7, 1)  # różowy sześcian
+        glColor3f(1.0, 0.4, 0.7)  # różowy sześcian
         glBegin(GL_QUADS)
         for face in faces:
             for vertex in face:
                 glVertex3fv(vertices[vertex])
         glEnd()
-
-    def draw_targetToPick(self, targetToPickXYZ):
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glColor4f(1.0, 0.4, 0.7, 1)
-        self.draw_cube(targetToPickXYZ, size = 0.1)
-
+        
+        # Opcjonalnie: dodaj czarny kontur dla lepszej widoczności
+        glColor3f(0.0, 0.0, 0.0)  # czarny kontur
+        glLineWidth(2.0)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        glBegin(GL_QUADS)
+        for face in faces:
+            for vertex in face:
+                glVertex3fv(vertices[vertex])
+        glEnd()
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # przywróć tryb wypełniania
+        
+        # Włącz z powrotem oświetlenie
+        glEnable(GL_LIGHTING)
 
     def initializeGL(self):
         glClearColor(1, 1, 1, 1)
@@ -167,7 +178,8 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glTranslatef(0.0, 0.0, segmentLen[3] / 2)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
         self.draw_segment(segmentLen[3])
-        glTranslatef(0.0, 0.0, segmentLen[3] / 2)
+        #---------------------------------------------------------------------------------------------------Added transal
+        glTranslatef(0.0, 0.0, segmentLen[3] / 2)                        
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
 
         self.draw_gripper()
