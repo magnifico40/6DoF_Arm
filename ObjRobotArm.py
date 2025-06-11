@@ -44,7 +44,16 @@ class RobotArm:
         self.JointLimits = np.array([[-180, 180], [-180, 180], [-270, 90], [-180, 180], [-180, 180], [-180, 180]])
         self.targetXYZ = [0, 0, 0]
         self.targetToPickXYZ = [0, 0, 0]
-        self.links = [RevoluteDH(d=self.dValues[i], a= self.a_val[i], alpha=self.alpha_val[i], offset=self.theta_increments[i]) for i in range(6)]
+        self.links = [
+            RevoluteDH(
+                d=self.dValues[i],
+                a=self.a_val[i],
+                alpha=self.alpha_val[i],
+                offset=self.theta_increments[i],
+                qlim=np.radians(self.JointLimits[i])  # <- Dodane limity w radianach
+            )
+            for i in range(6)
+        ]
         self.robotModel = DHRobot(self.links, name="MyRobot")
     
     def joint_trajectory(self, startingAngles, endingAngles, TrajetorySteps = 100):
@@ -136,7 +145,8 @@ class RobotArm:
         #xyz, ypr - arrays
         try:
             TargetMatrix = SE3(xyz) * SE3.RPY(ypr, unit='deg')
-            solution = self.robotModel.ikine_LM(TargetMatrix, q0 = initial_angles) # result in radians
+            solution = self.robotModel.ikine_LM(TargetMatrix, q0=initial_angles, ilimit=1000, slimit=1000)
+
             if solution.success:
                 return solution.q, solution.success
             else:

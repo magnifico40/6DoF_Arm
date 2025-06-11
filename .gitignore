@@ -1,0 +1,23 @@
+# Ignoruj środowiska wirtualne
+venv/
+.env/
+env/
+.venv/
+# Ignoruj środowiska wirtualne
+venv/
+venv2/
+.env/
+.venv/
+env/
+
+# Ignoruj pliki Pythona i cache
+__pycache__/
+*.py[cod]
+
+# Ignoruj pliki edytora
+.vscode/
+.idea/
+
+# Ignoruj pliki systemowe
+.DS_Store
+Thumbs.db

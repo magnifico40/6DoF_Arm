@@ -1,15 +1,3 @@
-"""
-trzeba niestety starszego pythona i numpy
-
-Instalation
-py -3.11 -m venv venv2 
-venv2\Scripts\activate
-pip install numpy==1.24.4
-pip install roboticstoolbox-python PyQt5 PyOpenGL PyOpenGL_accelerate
-
-pamiętaj by interpreter jeszcze wybrać z venv2
-
-"""
 
 import time
 import sys
@@ -28,18 +16,132 @@ from OpenGL.GLUT import *
 import pywavefront
 import pywavefront.visualization
 
-from RobotArm import RobotArm
-   
+from ObjRobotArm import RobotArm
+ 
+
 class RobotOpenGLWidget(QOpenGLWidget):
     def __init__(self, robot, parent=None):
         super().__init__(parent)
         self.robot = robot
-        
-        self.quadric = None
+        self.quadric = None 
         self.show_targetToPick = False 
         self.pickTarget = False 
         self.targetPicked = False
-        
+
+        self.segment_models = [
+            pywavefront.Wavefront('Modele3D/J1.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J2.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J3.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J4.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J5.obj', collect_faces=True),
+            pywavefront.Wavefront('Modele3D/J6.obj', collect_faces=True)
+        ]
+
+    def initializeGL(self):
+        glClearColor(1, 1, 1, 1)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        glLightfv(GL_LIGHT0, GL_POSITION, [5.0, 5.0, 10.0, 1.0])
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])
+        glEnable(GL_NORMALIZE)
+
+        self.quadric = gluNewQuadric()
+
+    def resizeGL(self, w, h):
+        glViewport(0, 0, w, h)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45.0, w / float(h or 1), 1.0, 100.0)
+        glMatrixMode(GL_MODELVIEW)
+
+    def paintGL(self):
+        angles = self.robot.get_angles()
+        segmentLen = self.robot.get_segments_len()
+        targetToPickXYZ = self.robot.get_targetToPick_xyz()
+        # theta_table = get_theta_table()
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+
+        gluLookAt(5, 1, 8, 0, 0, 0, 0, 0, 1)
+
+        glColor4f(0.9, 0.9, 0.9, 1.0)  # R, G, B, A
+
+        # Wyłącz oświetlenie, jeśli używasz go w scenie
+        glDisable(GL_LIGHTING)
+
+        # Rysuj dużą płaszczyznę XY
+        glBegin(GL_QUADS)
+        size = 100  # rozmiar płaszczyzny w jednostkach
+        glVertex3f(-size, -size, 0)
+        glVertex3f(size, -size, 0)
+        glVertex3f(size, size, 0)
+        glVertex3f(-size, size, 0)
+        glEnd()
+
+        # (opcjonalnie) Włącz z powrotem oświetlenie
+
+
+        self.draw_grid()
+
+        # Podstawa
+        glPushMatrix()
+        glTranslatef(0.0, 0.0, segmentLen[0] / 2)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
+        glRotatef(angles[0], 0, 0, 1)
+        self.draw_segment(0)
+        glTranslatef(0.0, 0.0, segmentLen[0] / 2)
+
+        # Ramię górne
+
+
+        glTranslatef(0.0, 0.0, segmentLen[1] / 2)
+        glRotatef(angles[1], 1, 0, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
+        self.draw_segment(1)
+        glTranslatef(0.0, 0.0, segmentLen[1] / 2)
+
+        # nadgarstek
+
+        glTranslatef(0.15, 0, 0.5)
+        glRotatef(angles[2], 1, 0, 0)  # roll
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
+        self.draw_segment(2)
+
+        glRotatef(angles[3], 0, 1, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
+        self.draw_segment(3)
+        glTranslatef(-0.15, -segmentLen[2], 0)
+
+        glRotatef(angles[4], 1, 0, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.3, 0.6, 1.0])
+        self.draw_segment(4)
+
+        glRotatef(angles[5], 0, 1, 0)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.5, 0, 0, 1.0])
+        self.draw_segment(5)
+
+
+        if self.pickTarget == True and self.show_targetToPick == True and self.targetPicked == True: 
+            glTranslatef(0.0, 0.0, 0.0)
+            self.draw_targetToPick([0, 0, 0]) #wspolrzedne wzgledem grippera
+            
+        glPopMatrix()
+
+        glPushMatrix()
+        if self.pickTarget == False and self.show_targetToPick == True:
+           glTranslatef(targetToPickXYZ[0]/2, targetToPickXYZ[1]/2, targetToPickXYZ[2])
+           self.draw_targetToPick(targetToPickXYZ) #wspolrzedne wzgledem globalnego ukl. wsp.
+         
+        glPopMatrix()
+        glEnable(GL_LIGHTING)
+
+
 
     def draw_targetToPick(self, targetToPickXYZ):
         # Wyłącz oświetlenie na czas rysowania targetu
@@ -50,7 +152,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         center[0] = center[0]/2
         center[1] = center[1]/2
         x, y, z = center
-        size = 0.1
+        size = 0.2
 
         vertices = [
             [x - size, y - size, z - size],
@@ -101,139 +203,19 @@ class RobotOpenGLWidget(QOpenGLWidget):
         # Włącz z powrotem oświetlenie
         glEnable(GL_LIGHTING)
 
-    def initializeGL(self):
-        glClearColor(1, 1, 1, 1)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_LIGHTING)
-        glEnable(GL_LIGHT0)
-
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-        glLightfv(GL_LIGHT0, GL_POSITION, [5.0, 5.0, 10.0, 1.0])
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])
-        glEnable(GL_NORMALIZE)
-
-        self.quadric = gluNewQuadric()
-
-    def resizeGL(self, w, h):
-        glViewport(0, 0, w, h)
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(45.0, w / float(h or 1), 1.0, 100.0)
-        glMatrixMode(GL_MODELVIEW)
-
-    def paintGL(self):
-        angles = self.robot.get_angles()
-        segmentLen = self.robot.get_segments_len()
-        targetToPickXYZ = self.robot.get_targetToPick_xyz()
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-
-        gluLookAt(5, 1, 8, 0, 0, 0, 0, 0, 1)
-
-        glColor4f(0.9, 0.9, 0.9, 1.0)  # R, G, B, A
-
-        # Wyłącz oświetlenie, jeśli używasz go w scenie
-        glDisable(GL_LIGHTING)
-
-        # Rysuj dużą płaszczyznę XY
-        glBegin(GL_QUADS)
-        size = 100  # rozmiar płaszczyzny w jednostkach
-        glVertex3f(-size, -size, 0)
-        glVertex3f(size, -size, 0)
-        glVertex3f(size, size, 0)
-        glVertex3f(-size, size, 0)
-        glEnd()
-
-        # (opcjonalnie) Włącz z powrotem oświetlenie
-        glEnable(GL_LIGHTING)
-
-        self.draw_grid()
-
-        # Podstawa
+    def draw_segment(self, index):
         glPushMatrix()
-        glTranslatef(0.0, 0.0, segmentLen[0] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1.0, 0.5, 0.0, 1.0])
-        glRotatef(angles[0], 0, 0, 1)
-        self.draw_segment(segmentLen[0])
-        glTranslatef(0.0, 0.0, segmentLen[0] / 2)
-
-        # Ramię górne
-        glRotatef(angles[1], 1, 0, 0)
-        glTranslatef(0.0, 0.0, segmentLen[1] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.45, 0.65, 0.0, 1.0])
-        self.draw_segment(segmentLen[1])
-        glTranslatef(0.0, 0.0, segmentLen[1] / 2)
-
-        # nadgarstek
-        glRotatef(angles[2], 1, 0, 0)
-        glRotatef(90, 1, 0, 0)
-        glRotatef(angles[3], 0, 0, 1)  # roll
-        glTranslatef(0.0, 0.0, segmentLen[2] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.6, 0.6, 0.6, 1.0])
-        self.draw_segment(segmentLen[2])
-        glTranslatef(0.0, 0.0, segmentLen[2] / 2)
-
-        glRotatef(angles[4], 1, 0, 0)
-        glRotatef(angles[5], 0, 0, 1)
-        glTranslatef(0.0, 0.0, segmentLen[3] / 2)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.3, 0.6, 0.6, 1.0])
-        self.draw_segment(segmentLen[3])
-        glTranslatef(0.0, 0.0, segmentLen[3] / 2)                        
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [1, 0, 0, 1.0])
-
-        self.draw_gripper()
-
-        #glTranslatef(0.0, 0.0, 0.4)
-        #self.draw_targetToPick(targetToPickXYZ)
-
-        if self.pickTarget == True and self.show_targetToPick == True and self.targetPicked == True: 
-            glTranslatef(0.0, 0.0, 0.0)
-            self.draw_targetToPick([0, 0, 0]) #wspolrzedne wzgledem grippera
-            
-        glPopMatrix()
-        
-        glPushMatrix()
-        if self.pickTarget == False and self.show_targetToPick == True:
-           glTranslatef(targetToPickXYZ[0]/2, targetToPickXYZ[1]/2, targetToPickXYZ[2])
-           self.draw_targetToPick(targetToPickXYZ) #wspolrzedne wzgledem globalnego ukl. wsp.
-            
-        #self.draw_target() 
-        
-
+        self.draw_model(self.segment_models[index])
         glPopMatrix()
 
-    def draw_segment(self, length):
-        glPushMatrix()
-        radius = 0.1
-        slices = 20
-        stacks = 20
-
-        glTranslatef(0, 0, -length / 2.0)
-        glRotatef(-90, 0, 0, 1)  # walec wzdłuż osi Y
-
-        # Rysujemy walec wzdłuż osi Z
-        # Dolna półkula
-        glPushMatrix()
-        glTranslatef(0, 0, 0)
-        gluSphere(self.quadric, radius, slices, stacks)
-        glPopMatrix()
-
-        # Walec
-        glPushMatrix()
-        glTranslatef(0, 0, 0)
-        gluCylinder(self.quadric, radius, radius, length, slices, 1)
-        glPopMatrix()
-
-        # Górna półkula
-        glPushMatrix()
-        glTranslatef(0, 0, length)
-        gluSphere(self.quadric, radius, slices, stacks)
-        glPopMatrix()
-
-        glPopMatrix()
+    def draw_model(self, model):
+        for mesh in model.mesh_list:
+            glBegin(GL_TRIANGLES)
+            for face in mesh.faces:
+                for vertex_i in face:
+                    vertex = model.vertices[vertex_i]
+                    glVertex3f(*vertex)
+            glEnd()
 
     def draw_grid(self):
         glDisable(GL_LIGHTING)
@@ -302,33 +284,6 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
         glEnable(GL_LIGHTING)
 
-    def draw_target(self):
-        #trochę na szybko
-        xyz = self.robot.get_target_xyz()
-
-        x, y, z = 0, 0, 0
-        #small translation, so we can se target better
-        #if xyz[0]>0: x = 0.1
-        #elif xyz[0]<0: x = -0.1
-        #if xyz[1]>0: y = 0.1
-        #elif xyz[1]<0: y = -0.1
-        #if xyz[2]>0: z = 0.1
-        #elif xyz[2]<0: z = -0.1
-        glTranslatef(x, y, z)
-
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        
-        glEnable(GL_POINT_SMOOTH)
-        glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
-
-        glPointSize(15.0)
-        glColor4f(1.0, 0.7, 0.2, 0.2) 
-
-        glBegin(GL_POINTS)
-        glVertex3f(xyz[0], xyz[1], xyz[2])
-        glEnd()
-
     def draw_gripper(self):
         glPushMatrix()
 
@@ -364,6 +319,7 @@ class RobotOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
 
         glPopMatrix()
+
 
 class MyButton(QPushButton):
     def __init__(self, text=""):
@@ -421,7 +377,7 @@ class MainWindow(QMainWindow):
         self.animations = []
 
         splitter = QSplitter(Qt.Horizontal)
-        main_widget = splitter  
+        main_widget = splitter  # Use splitter as main widget
         self.setCentralWidget(main_widget)
 
         # Panel suwaków
@@ -687,12 +643,16 @@ class MainWindow(QMainWindow):
             self.robot.set_angle(index, value)
             self.opengl_widget.update()
             x, y, z, yaw, pitch, roll = self.robot.get_gripper_xyz_ypr()
-            self.x_spinbox.setValue(x)
-            self.y_spinbox.setValue(y)
-            self.z_spinbox.setValue(z)
-            self.roll_spinbox.setValue(roll)
-            self.pitch_spinbox.setValue(pitch)
-            self.yaw_spinbox.setValue(yaw)
+            if z > -0.1:
+                self.x_spinbox.setValue(x)
+                self.y_spinbox.setValue(y)
+                self.z_spinbox.setValue(z)
+                self.roll_spinbox.setValue(roll)
+                self.pitch_spinbox.setValue(pitch)
+                self.yaw_spinbox.setValue(yaw)
+            else: 
+                QMessageBox.warning(self, "Kinematics", "Ramię nie może przejść pod ziemię")
+
 
             label.setStyleSheet("color: black; min-width: 100px;")
 
@@ -787,22 +747,12 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Inverse Kinematics", "Nie udało się znaleźć rozwiązania IK.")
 
 
-       
+
+
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-        
-          
-        
-        
-        
-        
-        
-        
-        
-        
-        
-       
-        
