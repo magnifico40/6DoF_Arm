@@ -32,7 +32,7 @@ class RobotArm:
         self.angles = np.zeros(6)
         self.segmentLen = np.array([0.5, 1, 0.5, 0.25])
         self.a_val = np.array([0, self.segmentLen[1], 0, 0, 0, 0])
-        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3] + 0.2])
+        self.d_val = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
         self.dValues = np.array([self.segmentLen[0], 0, 0, self.segmentLen[2], 0, self.segmentLen[3]])
         self.alpha_val = np.array(np.radians([-90, 0, -90, 90, -90, 0]))
         self.theta_increments = np.radians([-90, -90, 0, 0, 0, 0])

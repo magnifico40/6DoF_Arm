@@ -546,77 +546,8 @@ class MainWindow(QMainWindow):
 
         control_layout.addStretch()
 
-        #target section
-        target_group = QGroupBox("Object to pick")
-        target_group.setStyleSheet("QGroupBox {background-color: #ADD8E6;}")
-        target_layout = QVBoxLayout(target_group)
         
-        
-        # target coordinates
-        pos_label_targ = QLabel("Position:")
-        pos_label_targ.setStyleSheet("font-weight: bold; font-size: 13px")
-        target_layout.addWidget(pos_label_targ)
-
-        # X coordinate
-        x_layout_targ = QHBoxLayout()
-        x_label_targ = QLabel("X:")
-        x_label_targ.setStyleSheet("font-size: 12px")
-        x_label_targ.setMinimumWidth(20)
-        self.x_spinbox_targ = QDoubleSpinBox()
-        self.x_spinbox_targ.setRange(-10.0, 10.0)
-        self.x_spinbox_targ.setSingleStep(0.1)
-        self.x_spinbox_targ.setDecimals(2)
-        self.x_spinbox_targ.setValue(0.0)
-        x_layout_targ.addWidget(x_label_targ)
-        x_layout_targ.addWidget(self.x_spinbox_targ)
-
-        # Y coordinate
-        y_layout_targ = QHBoxLayout()
-        y_label_targ = QLabel("Y:")
-        y_label_targ.setStyleSheet("font-size: 12px")
-        y_label_targ.setMinimumWidth(20)
-        self.y_spinbox_targ = QDoubleSpinBox()
-        self.y_spinbox_targ.setRange(-10.0, 10.0)
-        self.y_spinbox_targ.setSingleStep(0.1)
-        self.y_spinbox_targ.setDecimals(2)
-        self.y_spinbox_targ.setValue(0.0)
-        y_layout_targ.addWidget(y_label_targ)
-        y_layout_targ.addWidget(self.y_spinbox_targ)
-
-        # Z coordinate
-        z_layout_targ = QHBoxLayout()
-        z_label_targ = QLabel("Z:")
-        z_label_targ.setStyleSheet("font-size: 12px")
-        z_label_targ.setMinimumWidth(20)
-        self.z_spinbox_targ = QDoubleSpinBox()
-        self.z_spinbox_targ.setRange(-10.0, 10.0)
-        self.z_spinbox_targ.setSingleStep(0.1)
-        self.z_spinbox_targ.setDecimals(2)
-        self.z_spinbox_targ.setValue(0.0)
-        z_layout_targ.addWidget(z_label_targ)
-        z_layout_targ.addWidget(self.z_spinbox_targ)
-        
-        self.draw_target_btn = MyButton("Draw Target")
-        self.draw_target_btn.setCheckable(True)
-        self.draw_target_btn.clicked.connect(self.draw_targetToPick) #referencja do funckji, bez naw - nie jest wykonywana natychmist
-
-        self.PickTarget_btn = MyButton("Pick Target")
-        self.PickTarget_btn.setCheckable(True)
-        self.PickTarget_btn.clicked.connect(self.PickTarget)
-
-
-        target_layout.addLayout(x_layout_targ)
-        target_layout.addSpacing(5)
-        target_layout.addLayout(y_layout_targ)
-        target_layout.addSpacing(5)
-        target_layout.addLayout(z_layout_targ)
-        target_layout.addSpacing(5)
-        target_layout.addWidget(self.draw_target_btn)
-        target_layout.addSpacing(5)
-        target_layout.addWidget(self.PickTarget_btn)
-
-        control_layout.addWidget(target_group)
-
+       
         # scroll_area z pionowym suwakiem
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -666,67 +597,7 @@ class MainWindow(QMainWindow):
             animation.setEndValue(0)
             animation.start()
             self.animations.append(animation)
-    
-    def PickTarget(self):
-        self.opengl_widget.targetPicked = False
-        if self.PickTarget_btn.isChecked():
-            self.opengl_widget.pickTarget = True
-
-            targetToPick_x = self.x_spinbox_targ.value()
-            targetToPick_y = self.y_spinbox_targ.value()
-            targetToPick_z = self.z_spinbox_targ.value()
-            targetToPickXYZ = [targetToPick_x, targetToPick_y, targetToPick_z]
-
-            initial_angles = self.robot.get_angles()
-            yaw = np.degrees(np.arctan2(targetToPick_y, targetToPick_x))
-
-            rpy = [0, 90, yaw]
-            Targetangles, success = self.robot.inverse_kinematics(targetToPickXYZ, rpy, initial_angles)
-            if success:
-                print("sukces")
-                self.move_pointToPoint(Targetangles, initial_angles)
-                self.opengl_widget.targetPicked = True
-            else: QMessageBox.warning(self, "Inverse Kinematics", "Cel poza zasięgiem.")
-        else:
-
-            self.opengl_widget.pickTarget = False
-            z = self.robot.targetToPickXYZ[2]
-            velocity = 0
-            gravity = -9.81  # przyspieszenie ziemskie w m/s^2
-            time_step = 0.5  # krok czasowy w sekundach
-
-            while z > 0:
-                velocity += gravity * time_step
-                z += velocity * time_step
-                if z < 0:
-                    z = 0  # zatrzymanie na ziemi
-                self.robot.targetToPickXYZ[2] = z
-                time.sleep(time_step)
-                QApplication.processEvents() 
-                self.opengl_widget.update()
-                self.opengl_widget.pickTarget = False
-                height = self.robot.targetToPickXYZ[2]
-                while self.robot.targetToPickXYZ[2] < 0:
-                    for i in range(height):
-                        self.robot.targetToPickXYZ[2] = self.robot.targetToPickXYZ[2] - 0.1
-                        
-
-        self.opengl_widget.update()
-
-    def draw_targetToPick(self):
-        if self.draw_target_btn.isChecked():
-            targetToPick_x = self.x_spinbox_targ.value()
-            targetToPick_y = self.y_spinbox_targ.value()
-            targetToPick_z = self.z_spinbox_targ.value()
-            targetToPickXYZ = [targetToPick_x, targetToPick_y, targetToPick_z]
-
-            
-            self.robot.set_targetToPick_xyz(targetToPick_x, targetToPick_y, targetToPick_z)
-            self.opengl_widget.show_targetToPick = True
-        else:
-            self.opengl_widget.show_targetToPick = False
-
-        self.opengl_widget.update()
+        
 
     def move_pointToPoint(self, endingAngles, initialAngles):
         angles_deg = np.degrees(endingAngles)
@@ -741,7 +612,6 @@ class MainWindow(QMainWindow):
                 self.robot.set_angle(i, transitional_angles[i])
             time.sleep(0.001)    
             QApplication.processEvents()    #odswierzenie GUI
-            self.draw_targetToPick()
         
 
     def apply_inverse_kinematics(self):
